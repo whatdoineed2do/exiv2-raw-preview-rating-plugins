@@ -17,10 +17,10 @@ gpixbufldr:	gpixbufldr.c
 
 
 exiv2_pixbuf_loader.o:	exiv2_pixbuf_loader.cc
-	g++ $(CXXFLAGS) -c -fPIC -g $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $^
+	g++ $(CXXFLAGS) -c -fPIC -g $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^
 
 libexiv2_pixbuf_loader.so:	exiv2_pixbuf_loader.o
-	g++ -shared -g $(shell pkg-config gdk-pixbuf-2.0 --libs) $(shell pkg-config exiv2 --libs) $^ -o $@
+	g++ -shared -g $(shell pkg-config gdk-pixbuf-2.0 --libs) $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) $^ -o $@
 
 
 xmp:	xmp.cc
