@@ -39,6 +39,8 @@
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
 #include <exiv2/exiv2.hpp>
+#include <Magick++.h>
+
 
 extern "C" {
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule *module);
@@ -111,6 +113,8 @@ DbgHlpr*  DbgHlpr::_instance = NULL;
 #else
   #define DBG_LOG(info, err) 
 #endif
+  #define DBG_LOG(info, err) \
+    DbgHlpr::instance().log(__FILE__, __LINE__, info, err)
 
 
 struct Exiv2PxbufCtx
@@ -126,6 +130,56 @@ struct Exiv2PxbufCtx
     GByteArray*  data;
 };
 
+
+static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::Image::AutoPtr& img_, std::string& mimeType_)
+{
+    Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
+
+    DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+
+    /* exiv2 provides images sorted from small->large -  grabbing the 
+     * largest preview but try to avoid getting somethign too large due
+     * a bug in cairo-xlib-surface-shm.c:619 mem pool exhausting bug
+     *
+     * if the prev img is larger than D300 megapxls (3840pxls on longest
+     * edge) then try to either get another preview image or to scale it 
+     * using Magick++
+     */
+    const unsigned short  PREVIEW_LIMIT = 4288;  // D300's 12mpxl limit
+    Exiv2::PreviewPropertiesList::reverse_iterator  p = list.rbegin();
+    Exiv2::PreviewPropertiesList::reverse_iterator  pp = list.rend();
+    while (p != list.rend())
+    {
+	if (p->width_ > PREVIEW_LIMIT || p->height_ > PREVIEW_LIMIT) {
+	    pp = p;
+	}
+	++p;
+    }
+    if (pp == list.rend()) {
+	pp = list.rbegin();
+    }
+
+    Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
+    mimeType_ = preview.mimeType();
+    Magick::Blob   mgkblob;
+    if (pp->width_ > PREVIEW_LIMIT|| pp->height_ > PREVIEW_LIMIT)
+    {
+	Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
+
+	magick.filterType(Magick::LanczosFilter);
+	magick.magick(mimeType_.c_str());
+	magick.quality(70);
+	char  tmp[5];
+	sprintf(tmp, "%ld", PREVIEW_LIMIT);
+	magick.resize(Magick::Geometry(tmp));
+
+	magick.write(&mgkblob);
+    }
+
+    img_ = Exiv2::ImageFactory::open(
+			mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : preview.pData(), 
+			mgkblob.length() > 0 ? mgkblob.length() : preview.size() );
+}
 
 
 extern "C" {
@@ -154,26 +208,18 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
         orig->readMetadata();
 
         Exiv2::PreviewManager  exvprldr(*orig);
-        Exiv2::PreviewPropertiesList  list =  exvprldr.getPreviewProperties();
+	std::string  mimeType;
+	Exiv2::Image::AutoPtr  upd;
+	_previewImage(exvprldr, upd, mimeType);
 
-        // grabbing the largest preview
-        Exiv2::PreviewPropertiesList::iterator prevp = list.begin();
-        if (prevp != list.end()) {
-            advance(prevp, list.size()-1);
-        }
-        Exiv2::PreviewImage  preview =  exvprldr.getPreviewImage(*prevp);
-        Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open( preview.pData(), preview.size() );
         Exiv2::BasicIo&  rawio = upd->io();
         rawio.seek(0, Exiv2::BasicIo::beg);
-        rawio.mmap(), rawio.size();
 
         // let the other better placed loaders deal with the RAW img
         // preview (tif/jpeg/png
         //
         GdkPixbufLoader*  gpxbldr = NULL;
-        
-        //gpxbldr = gdk_pixbuf_loader_new_with_mime_type(preview.mimeType().c_str(), err_);
-        gpxbldr = gdk_pixbuf_loader_new_with_mime_type("image/x-nikon-nef", err_);
+        gpxbldr = gdk_pixbuf_loader_new_with_mime_type(mimeType.c_str(), err_);
         if (err_ && *err_) {
             g_error_free(*err_);
             *err_ = NULL;
@@ -265,22 +311,14 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         orig->readMetadata();
 
         Exiv2::PreviewManager  exvprldr(*orig);
-        Exiv2::PreviewPropertiesList  list =  exvprldr.getPreviewProperties();
-
-	DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
-
-        /* exiv2 provides images sorted from small->large -  grabbing the 
-         * largest preview
-         */
-        Exiv2::PreviewPropertiesList::iterator prevp = list.begin();
-        if (prevp != list.end()) {
-            advance(prevp, list.size()-1);
-        }
-        Exiv2::PreviewImage  preview =  exvprldr.getPreviewImage(*prevp);
-        Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open( preview.pData(), preview.size() );
+	std::string  mimeType;
+	Exiv2::Image::AutoPtr  upd;
+	_previewImage(exvprldr, upd, mimeType);
 
 #if 0
-        // hmm, doesnt seem to be read by the other things
+        /* this doesnt work as EOG is/has already tried to read the EXIF from 
+	 * the main image (ie the RAW file using libexif
+	 */
         upd->setByteOrder(orig->byteOrder());
         upd->setExifData(orig->exifData());
         upd->setIptcData(orig->iptcData());
@@ -294,12 +332,12 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         /* let the other better placed loaders deal with the RAW img
          * preview (tif/jpeg)
          */
-#if 0
+#if 1
 	DBG_LOG(DbgHlpr::concat("sload internal loader, buflen=", rawio.size()).c_str(), NULL);
         const mode_t  umsk = umask(0);
         umask(umsk);
         int  fd;
-        if ( (fd = open("exiv2_pixbuf_incrload.preview.dat", O_CREAT | O_TRUNC | O_WRONLY, umsk | 0666)) < 0) {
+        if ( (fd = open("exiv2_pixbuf_incrload.preview.dat", O_CREAT | O_TRUNC | O_WRONLY | O_SYNC, umsk | 0666)) < 0) {
             printf("failed to create dump file - %s\n", strerror(errno));
         }
         else
@@ -308,9 +346,9 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
             close(fd);
         }
 #endif
-        GdkPixbufLoader*  gpxbldr = gdk_pixbuf_loader_new_with_mime_type(preview.mimeType().c_str(), error_);
+        GdkPixbufLoader*  gpxbldr = gdk_pixbuf_loader_new_with_mime_type(mimeType.c_str(), error_);
 	DBG_LOG(DbgHlpr::concat("pixbuf loader=", (void*)gpxbldr).c_str(), error_);
-	DBG_LOG(DbgHlpr::concat("prev mime type=", preview.mimeType().c_str()).c_str(), NULL);
+	DBG_LOG(DbgHlpr::concat("prev mime type=", mimeType.c_str()).c_str(), NULL);
 	DBG_LOG(DbgHlpr::concat("buf=", rawio.size()).c_str(), NULL);
         if (error_ && *error_) {
             g_error_free(*error_);
@@ -322,6 +360,8 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
             }
             gpxbldr = gdk_pixbuf_loader_new();
         }
+
+printf("%s, line %ld ldr=%x  mime type=%s  rawio buf=%x size=%ld\n", __FILE__, __LINE__, gpxbldr, mimeType.c_str(), rawio.mmap(), rawio.size());
 
         if (gdk_pixbuf_loader_write(gpxbldr, rawio.mmap(), rawio.size(), error_) != TRUE)
 	{
