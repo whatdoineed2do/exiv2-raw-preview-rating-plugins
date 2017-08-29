@@ -129,7 +129,7 @@ struct Exiv2PxbufCtx
 };
 
 
-static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::Image::AutoPtr& img_, std::string& mimeType_)
+static Exiv2::Image::AutoPtr  _previewImage(Exiv2::PreviewManager&  exvprldr_, std::string& mimeType_)
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
@@ -159,7 +159,6 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::Image::Auto
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
     mimeType_ = preview.mimeType();
-    Magick::Blob   mgkblob;
     if (pp->width_ > PREVIEW_LIMIT|| pp->height_ > PREVIEW_LIMIT)
     {
 	Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
@@ -171,12 +170,15 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::Image::Auto
 	sprintf(tmp, "%ld", PREVIEW_LIMIT);
 	magick.resize(Magick::Geometry(tmp));
 
+	Magick::Blob   mgkblob;
 	magick.write(&mgkblob);
-    }
 
-    img_ = Exiv2::ImageFactory::open(
-			mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : preview.pData(), 
-			mgkblob.length() > 0 ? mgkblob.length() : preview.size() );
+	return Exiv2::ImageFactory::open((const unsigned char*)mgkblob.data(), mgkblob.length());
+    }
+    else
+    {
+	return Exiv2::ImageFactory::open(preview.pData(), preview.size());
+    }
 }
 
 
@@ -207,8 +209,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 
         Exiv2::PreviewManager  exvprldr(*orig);
 	std::string  mimeType;
-	Exiv2::Image::AutoPtr  upd;
-	_previewImage(exvprldr, upd, mimeType);
+	Exiv2::Image::AutoPtr  upd = _previewImage(exvprldr, mimeType);
 
         Exiv2::BasicIo&  rawio = upd->io();
         rawio.seek(0, Exiv2::BasicIo::beg);
@@ -312,6 +313,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         Exiv2::PreviewManager  exvprldr(*orig);
 	std::string  mimeType;
 
+#if 1
 	Exiv2::PreviewPropertiesList  list =  exvprldr.getPreviewProperties();
 
 	DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
@@ -358,6 +360,9 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 	Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(
 			    mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : preview.pData(), 
 			    mgkblob.length() > 0 ? mgkblob.length() : preview.size() );
+#else
+	Exiv2::Image::AutoPtr  upd = _previewImage(exvprldr, mimeType);
+#endif
 
 #if 0
         /* this doesnt work as EOG is/has already tried to read the EXIF from 
