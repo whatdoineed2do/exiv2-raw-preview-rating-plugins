@@ -478,7 +478,13 @@ eog_exiv2_ratings_plugin_activate (EogWindowActivatable *activatable)
 
     GtkWidget *statusbar = eog_window_get_statusbar(plugin->window);
     plugin->statusbar_exif = gtk_statusbar_new();
-    gtk_widget_set_size_request (plugin->statusbar_exif, 100, -1);
+
+    gint  minh, nath;
+    gtk_widget_get_preferred_height(plugin->statusbar_exif, &minh, &nath);
+    gint  minw, natw;
+    gtk_widget_get_preferred_width(plugin->statusbar_exif, &minw, &natw);
+
+    gtk_widget_set_size_request (plugin->statusbar_exif, natw, nath);
     gtk_box_pack_end (GTK_BOX(statusbar), plugin->statusbar_exif, FALSE, FALSE, 0);
 
 
