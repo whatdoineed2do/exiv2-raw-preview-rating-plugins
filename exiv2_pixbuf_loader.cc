@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include <sstream>
 
 #define GDK_PIXBUF_ENABLE_BACKEND
 #include <gdk-pixbuf/gdk-pixbuf-io.h>
@@ -43,6 +44,73 @@ extern "C" {
 G_MODULE_EXPORT void fill_vtable (GdkPixbufModule *module);
 G_MODULE_EXPORT void fill_info (GdkPixbufFormat *info);
 }
+
+
+
+class DbgHlpr
+{
+  public:
+    static DbgHlpr&  instance()
+    {
+	if (DbgHlpr::_instance == NULL) {
+	    DbgHlpr::_instance = new DbgHlpr();
+	}
+	return *DbgHlpr::_instance;
+    }
+
+    ~DbgHlpr() { close(_fd); }
+
+    DbgHlpr(const DbgHlpr&) = delete;
+    DbgHlpr& operator=(const DbgHlpr&) = delete;
+
+    void  log(const char* _file_, const int _line_, const char* msg_, GError** err_)
+    {
+	std::ostringstream  os;
+	os << _pid << ":  " << _file_ << ", " << _line_ << " :";
+	if (msg_) {
+	    os << "  " << msg_;
+	}
+
+	if (err_ && *err_) {
+	    os << "  err=" << (*err_)->message;
+	}
+	os << "\n";
+	const std::string&&  what = os.str();
+	write(_fd, what.c_str(), what.length());
+     }
+
+    template <typename T>
+     static std::string  concat(const char* a_, const T b_)
+     {
+	 std::ostringstream  os;
+	 os << a_ << b_;
+	 return os.str();
+     }
+
+  private:
+    DbgHlpr() : _fd(0), _pid(getpid())
+    { 
+	const mode_t  umsk = umask(0);
+	umask(umsk);
+	if ( (_fd = open("/tmp/exiv2_pixbuf_loader.log", O_CREAT | O_WRONLY | O_APPEND, umsk | 0666)) < 0) {
+	    printf("failed to create debug log - %s\n", strerror(errno));
+	}
+	log(__FILE__, __LINE__, "starting", NULL);
+    }
+
+    static DbgHlpr*  _instance;
+
+    const pid_t  _pid;
+    int  _fd;
+};
+DbgHlpr*  DbgHlpr::_instance = NULL;
+
+#ifndef NDEBUG
+  #define DBG_LOG(info, err) \
+    DbgHlpr::instance().log(__FILE__, __LINE__, info, err)
+#else
+  #define DBG_LOG(info, err) 
+#endif
 
 
 struct Exiv2PxbufCtx
@@ -104,7 +172,8 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
         //
         GdkPixbufLoader*  gpxbldr = NULL;
         
-        gpxbldr = gdk_pixbuf_loader_new_with_mime_type(preview.mimeType().c_str(), err_);
+        //gpxbldr = gdk_pixbuf_loader_new_with_mime_type(preview.mimeType().c_str(), err_);
+        gpxbldr = gdk_pixbuf_loader_new_with_mime_type("image/x-nikon-nef", err_);
         if (err_ && *err_) {
             g_error_free(*err_);
             *err_ = NULL;
@@ -156,7 +225,7 @@ gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
     ctx->data = g_byte_array_new();
 
 #ifndef NDEBUG
-    printf("%s, line %ld - begin load\n", __FILE__, __LINE__);
+    DBG_LOG("begin load", NULL);
     const mode_t  umsk = umask(0);
     umask(umsk);
     if ( (ctx->fd = open("exiv2_pixbuf_incrload.dat", O_CREAT | O_TRUNC | O_WRONLY, umsk | 0666)) < 0) {
@@ -164,7 +233,6 @@ gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
         if (*error_ != NULL) {
             g_set_error_literal(error_, 0, errno, "failed to create dump file");
         }
-        return NULL;
     }
 #endif
 
@@ -177,9 +245,7 @@ gboolean _gpxbuf_lincr(gpointer ctx_,
                        const guchar* buf_, guint size_,
                        GError **error_)
 {
-#ifndef NDEBUG
-    printf("%s, line %ld - incr load, %ld bytes\n", __FILE__, __LINE__, size_);
-#endif
+    DBG_LOG(DbgHlpr::concat("incr load, bytes=", size_).c_str(), NULL);
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     g_byte_array_append(ctx->data, buf_, size_);
     return TRUE;
@@ -191,11 +257,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     gboolean result = FALSE;
 
-#ifndef NDEBUG
-    printf("%s, line %ld - stop load, data len=%ld\n", __FILE__, __LINE__, ctx->data->len);
-    write(ctx->fd, ctx->data->data, ctx->data->len);
-    close(ctx->fd);
-#endif
+    DBG_LOG(DbgHlpr::concat("_gpxbuf_sload, len=", ctx->data->len).c_str(), NULL);
 
     try
     {
@@ -204,6 +266,8 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 
         Exiv2::PreviewManager  exvprldr(*orig);
         Exiv2::PreviewPropertiesList  list =  exvprldr.getPreviewProperties();
+
+	DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
 
         /* exiv2 provides images sorted from small->large -  grabbing the 
          * largest preview
@@ -230,8 +294,8 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         /* let the other better placed loaders deal with the RAW img
          * preview (tif/jpeg)
          */
-#ifndef NDEBUG
-        printf("%s, line %ld - sload, internal loader with buf=%ld\n", __FILE__, __LINE__, rawio.size());
+#if 0
+	DBG_LOG(DbgHlpr::concat("sload internal loader, buflen=", rawio.size()).c_str(), NULL);
         const mode_t  umsk = umask(0);
         umask(umsk);
         int  fd;
@@ -245,38 +309,46 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         }
 #endif
         GdkPixbufLoader*  gpxbldr = gdk_pixbuf_loader_new_with_mime_type(preview.mimeType().c_str(), error_);
+	DBG_LOG(DbgHlpr::concat("pixbuf loader=", (void*)gpxbldr).c_str(), error_);
+	DBG_LOG(DbgHlpr::concat("prev mime type=", preview.mimeType().c_str()).c_str(), NULL);
+	DBG_LOG(DbgHlpr::concat("buf=", rawio.size()).c_str(), NULL);
         if (error_ && *error_) {
             g_error_free(*error_);
             *error_ = NULL;
             printf("no known loader for explicit mimetype, defaulting\n");
             if (gpxbldr != NULL) {
                 gdk_pixbuf_loader_close(gpxbldr, NULL);
+		g_object_unref(gpxbldr);
             }
             gpxbldr = gdk_pixbuf_loader_new();
         }
 
-        if (gdk_pixbuf_loader_write(gpxbldr, rawio.mmap(), rawio.size(), error_) == TRUE)
+        if (gdk_pixbuf_loader_write(gpxbldr, rawio.mmap(), rawio.size(), error_) != TRUE)
+	{
+            printf("%s, line %ld - sload, internal loader failed, rawio buf=%ld size=%ld  err=%s\n", __FILE__, __LINE__, rawio.mmap(), rawio.size(), (error_ == NULL || error_ && *error_ == NULL ? "<>" : (*error_)->message));
+	}
+	else
         {
+	    gdk_pixbuf_loader_close(gpxbldr, NULL);
             GdkPixbuf*  pixbuf = gdk_pixbuf_loader_get_pixbuf(gpxbldr);
+	    DBG_LOG(DbgHlpr::concat("sload, internal load complete, pixbuf=", (void*)pixbuf).c_str(), NULL);
 
-#ifndef NDEBUG
-            printf("%s, line %ld - sload, internal loader done, pixbuf=%ld\n", __FILE__, __LINE__, pixbuf);
-#endif
-
-            if (ctx->prepared_func != NULL) {
-                //printf("calling prepared func\n");
-                (*ctx->prepared_func)(pixbuf, NULL, ctx->user_data);
-            }
-            if (ctx->updated_func != NULL) {
-                //printf("calling update func\n");
-                (*ctx->updated_func)(pixbuf, 0, 0, 
-                                     gdk_pixbuf_get_width(pixbuf), 
-                                     gdk_pixbuf_get_height(pixbuf),
-                                     ctx->user_data);
-            }
-            result = TRUE;
+	    if (pixbuf == NULL) {
+	    }
+	    else
+	    {
+		if (ctx->prepared_func != NULL) {
+		    (*ctx->prepared_func)(pixbuf, NULL, ctx->user_data);
+		}
+		if (ctx->updated_func != NULL) {
+		    (*ctx->updated_func)(pixbuf, 0, 0, 
+					 gdk_pixbuf_get_width(pixbuf), 
+					 gdk_pixbuf_get_height(pixbuf),
+					 ctx->user_data);
+		}
+		result = TRUE;
+	    }
         }
-        gdk_pixbuf_loader_close(gpxbldr, NULL);
         g_object_unref(gpxbldr);
         rawio.munmap();
     }
@@ -312,14 +384,14 @@ void fill_info (GdkPixbufFormat *info)
         { NULL, NULL, 0 }
     };
         
-    static gchar *mime_types[] = {
+    static const gchar *mime_types[] = {
         "image/x-canon-cr2",
         "image/x-canon-crw",
         "image/x-nikon-nef",
         NULL
     };
         
-    static gchar *extensions[] = {
+    static const gchar *extensions[] = {
         "cr2",
         "crw",
         "nef",
@@ -329,8 +401,8 @@ void fill_info (GdkPixbufFormat *info)
     info->name        = (char*)"exiv2 RAW preview loader";
     info->signature   = signature;
     info->description = (char*)"RAW preview image loader (via exiv2)";
-    info->mime_types  = mime_types;
-    info->extensions  = extensions;
+    info->mime_types  = (gchar**)mime_types;
+    info->extensions  = (gchar**)extensions;
     info->flags       = GDK_PIXBUF_FORMAT_THREADSAFE;
     info->license     = (char*)"LGPL";
 }
