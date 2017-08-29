@@ -67,8 +67,8 @@ main (int argc, char *argv[])
         loader = gdk_pixbuf_loader_new ();
     }
     gdk_pixbuf_loader_write (loader, buffer, length, NULL);
-    pixbuf = gdk_pixbuf_loader_get_pixbuf (loader);
     gdk_pixbuf_loader_close(loader, err_);
+    pixbuf = gdk_pixbuf_loader_get_pixbuf (loader);
 
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     image = gtk_image_new_from_pixbuf (pixbuf);
