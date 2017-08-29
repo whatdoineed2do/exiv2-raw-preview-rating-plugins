@@ -113,8 +113,6 @@ DbgHlpr*  DbgHlpr::_instance = NULL;
 #else
   #define DBG_LOG(info, err) 
 #endif
-  #define DBG_LOG(info, err) \
-    DbgHlpr::instance().log(__FILE__, __LINE__, info, err)
 
 
 struct Exiv2PxbufCtx
@@ -238,6 +236,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
     {
         printf("%s, line %ld - unknown exception\n", __FILE__, __LINE__);
     }
+    free(buf);
     return pixbuf;
 }
 
@@ -312,8 +311,53 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 
         Exiv2::PreviewManager  exvprldr(*orig);
 	std::string  mimeType;
-	Exiv2::Image::AutoPtr  upd;
-	_previewImage(exvprldr, upd, mimeType);
+
+	Exiv2::PreviewPropertiesList  list =  exvprldr.getPreviewProperties();
+
+	DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+
+	/* exiv2 provides images sorted from small->large -  grabbing the 
+	 * largest preview but try to avoid getting somethign too large due
+	 * a bug in cairo-xlib-surface-shm.c:619 mem pool exhausting bug
+	 *
+	 * if the prev img is larger than D300 megapxls (3840pxls on longest
+	 * edge) then try to either get another preview image or to scale it 
+	 * using Magick++
+	 */
+	const unsigned short  PREVIEW_LIMIT = 4288;  // D300's 12mpxl limit
+	Exiv2::PreviewPropertiesList::reverse_iterator  p = list.rbegin();
+	Exiv2::PreviewPropertiesList::reverse_iterator  pp = list.rend();
+	while (p != list.rend())
+	{
+	    if (p->width_ > PREVIEW_LIMIT || p->height_ > PREVIEW_LIMIT) {
+		pp = p;
+	    }
+	    ++p;
+	}
+	if (pp == list.rend()) {
+	    pp = list.rbegin();
+	}
+
+	Exiv2::PreviewImage  preview =  exvprldr.getPreviewImage(*pp);
+	mimeType = preview.mimeType();
+	Magick::Blob   mgkblob;
+	if (pp->width_ > PREVIEW_LIMIT|| pp->height_ > PREVIEW_LIMIT)
+	{
+	    Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
+
+	    magick.filterType(Magick::LanczosFilter);
+	    //magick.magick(mimeType.c_str());  -- needs to be non-mime ie JPEG, not image/jpeg
+	    magick.quality(70);
+	    char  tmp[5];
+	    sprintf(tmp, "%ld", PREVIEW_LIMIT);
+	    magick.resize(Magick::Geometry(tmp));
+
+	    magick.write(&mgkblob);
+	}
+
+	Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(
+			    mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : preview.pData(), 
+			    mgkblob.length() > 0 ? mgkblob.length() : preview.size() );
 
 #if 0
         /* this doesnt work as EOG is/has already tried to read the EXIF from 
@@ -332,7 +376,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         /* let the other better placed loaders deal with the RAW img
          * preview (tif/jpeg)
          */
-#if 1
+#if 0
 	DBG_LOG(DbgHlpr::concat("sload internal loader, buflen=", rawio.size()).c_str(), NULL);
         const mode_t  umsk = umask(0);
         umask(umsk);
@@ -360,8 +404,6 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
             }
             gpxbldr = gdk_pixbuf_loader_new();
         }
-
-printf("%s, line %ld ldr=%x  mime type=%s  rawio buf=%x size=%ld\n", __FILE__, __LINE__, gpxbldr, mimeType.c_str(), rawio.mmap(), rawio.size());
 
         if (gdk_pixbuf_loader_write(gpxbldr, rawio.mmap(), rawio.size(), error_) != TRUE)
 	{
