@@ -1,5 +1,6 @@
-# gtk-addons
-Simple set of addons for `gtk`, primarily/initially a gtk pxibuf loader for RAW files (loading by extracting embedded preview images via `exiv2`) and a `eog` rating plugin (also using `exiv2`).
+# Gnome EOG plugin: EXIF rating & simple RAW image viewer
+
+Simple set of addons for `gtk`, primarily/initially a `gtk pxibuf loader` for RAW files (loading by extracting embedded preview images via `exiv2`) and a `eog` rating plugin (also using `exiv2`).
 
 Currently, pixbuf loader handles Nikon NEF and Canon CR2 and will examine the preview images available to use for display:  by default, it won't display anything larger than 12mpl and will internally scale a preview image to this size - this is to avoid a `cairo-xlib-surface-shm.c:619 mem pool exhausting bug` that would otherwise cause `eog` to crash.
 
