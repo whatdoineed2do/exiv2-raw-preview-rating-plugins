@@ -1,6 +1,7 @@
 #all:	gpixbuf gpixbufldr libexiv2_pixbuf_loader.so xmp libexiv2_ratings.so
 all:	objs libexiv2_pixbuf_loader.so libexiv2_ratings.so gpixbuf gpixbufldr
 install:	all
+	@echo "gdk-pixbuf-query-loaders-64 > /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders.cache"
 	cp libexiv2_pixbuf_loader.so /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/
 	cp libexiv2_ratings.so exiv2_ratings.plugin /usr/lib64/eog/plugins/
 
