@@ -2,7 +2,7 @@
 all:	objs libexiv2_pixbuf_loader.so libexiv2_ratings.so gpixbuf gpixbufldr
 install:	all
 	cp libexiv2_pixbuf_loader.so /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/
-	cp libexiv2_ratings.so /usr/lib64/eog/plugins/
+	cp libexiv2_ratings.so exiv2_ratings.plugin /usr/lib64/eog/plugins/
 
 #CXXFLAGS += -gdwarf-2 -DNDEBUG
 CXXFLAGS += -DNDEBUG
