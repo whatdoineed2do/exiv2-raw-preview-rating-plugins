@@ -147,7 +147,9 @@ struct PrevwBuf
     } magick;
 };
 
-static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_)
+
+static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_, 
+			   int width_, int height_, const Exiv2::ExifData& exif_)
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
@@ -187,13 +189,47 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
     {
 	DBG_LOG(DbgHlpr::concat("scaling preview=", i).c_str(), NULL);
 
+	static const Exiv2::ExifKey  etags[] = {
+	    Exiv2::ExifKey("Exif.Image.Model"),
+	    Exiv2::ExifKey("Exif.Image.DateTime"), 
+	    Exiv2::ExifKey("Exif.Photo.ExposureTime"), 
+	    Exiv2::ExifKey("Exif.Photo.FNumber"), 
+	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
+	};
+
 	Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
 
 	magick.filterType(Magick::LanczosFilter);
 	magick.quality(70);
-	char  tmp[5];
-	sprintf(tmp, "%ld", PREVIEW_LIMIT);
+	char  tmp[15];
+	snprintf(tmp, 14, "%ld", PREVIEW_LIMIT);
 	magick.resize(Magick::Geometry(tmp));
+
+	std::ostringstream  exif;
+	for (int i=0; i<5; i++) {
+	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etags[i]);
+	    if (e == exif_.end()) {
+		continue;
+	    }
+	    exif << *e << " ";
+	}
+	exif << width_ << "x" << height_;
+
+	Magick::Image  info("600x30", "grey");
+	//info.font("@Arial.ttf");
+	//info.matte(true);
+	//info.channel(MagickCore::OpacityChannel);
+	//info.colorFuzz(MaxRGB*0.5);
+	//info.opaque("black", "grey");
+
+	info.fontPointsize(18);
+	info.annotate(exif.str(), Magick::Geometry("+10+10"), MagickCore::WestGravity);
+	info.opacity(65535/3.0);
+	info.transparent("grey");
+
+	magick.composite(info,
+		         Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
+			 MagickCore::DissolveCompositeOp);
 
 	magick.write(&prevwBuf_.magick.blob);
 
@@ -211,7 +247,6 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
     Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(pr, prsz);
     prevwBuf_.exiv2.memio.transfer(upd->io());
 }
-
 
 
 extern "C" {
@@ -241,7 +276,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 	{
 	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf, sz);
 	    orig->readMetadata();
-	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType);
+	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType, orig->pixelWidth(), orig->pixelHeight(), orig->exifData());
 	}
 
 	Exiv2::BasicIo&  rawio = prevwbuf.exiv2.memio;
@@ -345,7 +380,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 	{
 	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(ctx->data->data, ctx->data->len);
 	    orig->readMetadata();
-	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType);
+	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType, orig->pixelWidth(), orig->pixelHeight(), orig->exifData());
 	}
 
 #if 0
