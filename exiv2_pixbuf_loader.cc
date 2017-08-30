@@ -129,7 +129,25 @@ struct Exiv2PxbufCtx
 };
 
 
-static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& dbuf_, Exiv2::BasicIo& bio_, std::string& mimeType_)
+struct PrevwBuf
+{
+    PrevwBuf()  = default;
+    ~PrevwBuf() = default;
+
+    PrevwBuf(const PrevwBuf&)            = delete;
+    PrevwBuf& operator=(const PrevwBuf&) = delete;
+
+    struct {
+	Exiv2::DataBuf  dbuf;
+	Exiv2::MemIo    memio;
+    } exiv2;
+
+    struct {
+	Magick::Blob    blob;
+    } magick;
+};
+
+static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_)
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
@@ -143,15 +161,17 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& db
      * edge) then try to either get another preview image or to scale it 
      * using Magick++
      */
-    const unsigned short  PREVIEW_LIMIT = 4288;  // D300's 12mpxl limit
+    unsigned short  PREVIEW_LIMIT = getenv("EXIV2_PIXBUF_LOADER_SCALE_LIMIT") == NULL ? 4288 : (unsigned short)atoi(getenv("EXIV2_PIXBUF_LOADER_SCALE_LIMIT"));  // D300's 12mpxl limit
     Exiv2::PreviewPropertiesList::reverse_iterator  p = list.rbegin();
     Exiv2::PreviewPropertiesList::reverse_iterator  pp = list.rend();
+    unsigned  i = 0;
     while (p != list.rend())
     {
 	if (p->width_ > PREVIEW_LIMIT || p->height_ > PREVIEW_LIMIT) {
 	    pp = p;
 	}
 	++p;
+	++i;
     }
     if (pp == list.rend()) {
 	pp = list.rbegin();
@@ -160,9 +180,13 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& db
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
     mimeType_ = preview.mimeType();
 
-    Magick::Blob   mgkblob;
+    const unsigned char*  pr = NULL;
+    size_t  prsz = 0;
+
     if (pp->width_ > PREVIEW_LIMIT|| pp->height_ > PREVIEW_LIMIT)
     {
+	DBG_LOG(DbgHlpr::concat("scaling preview=", i).c_str(), NULL);
+
 	Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
 
 	magick.filterType(Magick::LanczosFilter);
@@ -171,18 +195,23 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& db
 	sprintf(tmp, "%ld", PREVIEW_LIMIT);
 	magick.resize(Magick::Geometry(tmp));
 
-	magick.write(&mgkblob);
+	magick.write(&prevwBuf_.magick.blob);
+
+	prsz = prevwBuf_.magick.blob.length();
+	pr = (const unsigned char*)prevwBuf_.magick.blob.data();
     }
     else
     {
-	dbuf_ = preview.copy();
+	prevwBuf_.exiv2.dbuf = preview.copy();
+
+	prsz = prevwBuf_.exiv2.dbuf.size_;
+	pr = prevwBuf_.exiv2.dbuf.pData_;
     }
     
-    Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(
-				    mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : dbuf_.pData_, 
-				    mgkblob.length() > 0 ? mgkblob.length() : dbuf_.size_ );
-    bio_.transfer(upd->io());
+    Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(pr, prsz);
+    prevwBuf_.exiv2.memio.transfer(upd->io());
 }
+
 
 
 extern "C" {
@@ -207,16 +236,15 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 
     try
     {
-        Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf, sz);
-        orig->readMetadata();
-
-        Exiv2::PreviewManager  exvprldr(*orig);
 	std::string  mimeType;
+	PrevwBuf  prevwbuf;
+	{
+	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf, sz);
+	    orig->readMetadata();
+	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType);
+	}
 
-	Exiv2::DataBuf dbuf;
-        Exiv2::MemIo  rawio;
-	_previewImage(exvprldr, dbuf, rawio, mimeType);
-
+	Exiv2::BasicIo&  rawio = prevwbuf.exiv2.memio;
         rawio.seek(0, Exiv2::BasicIo::beg);
 
         // let the other better placed loaders deal with the RAW img
@@ -312,15 +340,13 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 
     try
     {
-        Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(ctx->data->data, ctx->data->len);
-        orig->readMetadata();
-
-        Exiv2::PreviewManager  exvprldr(*orig);
 	std::string  mimeType;
-
-	Exiv2::DataBuf dbuf;
-        Exiv2::MemIo  rawio;
-	_previewImage(exvprldr, dbuf, rawio, mimeType);
+	PrevwBuf  prevwbuf;
+	{
+	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(ctx->data->data, ctx->data->len);
+	    orig->readMetadata();
+	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType);
+	}
 
 #if 0
         /* this doesnt work as EOG is/has already tried to read the EXIF from 
@@ -332,6 +358,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
         upd->setXmpData(orig->xmpData());
         upd->writeMetadata();
 #endif
+	Exiv2::BasicIo&  rawio = prevwbuf.exiv2.memio;
         rawio.seek(0, Exiv2::BasicIo::beg);
 
         /* let the other better placed loaders deal with the RAW img
@@ -393,7 +420,6 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 	    }
         }
         g_object_unref(gpxbldr);
-        rawio.munmap();
     }
     catch (const std::exception& ex)
     {
