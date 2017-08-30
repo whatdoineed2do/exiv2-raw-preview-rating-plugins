@@ -6,6 +6,7 @@
 #include <strings.h>
 #include <limits.h>
 #include <libgen.h>
+#include <limits.h>
 
 #include <string>
 #include <sstream>
@@ -160,7 +161,8 @@ struct PrevwBuf
     } magick;
 };
 
-static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_)
+static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_, 
+			   int width_, int height_, const Exiv2::ExifData& exif_)
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
@@ -198,14 +200,50 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 
     if (pp->width_ > PREVIEW_LIMIT|| pp->height_ > PREVIEW_LIMIT)
     {
+	// annote
+	static const Exiv2::ExifKey  etags[] = {
+	    Exiv2::ExifKey("Exif.Image.Model"),
+	    Exiv2::ExifKey("Exif.Image.DateTime"), 
+	    Exiv2::ExifKey("Exif.Photo.ExposureTime"), 
+	    Exiv2::ExifKey("Exif.Photo.FNumber"), 
+	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
+	};
+
 	cout << "scaling, limit=" << PREVIEW_LIMIT << " w=" << pp->width_ << " h=" << pp->height_ << endl;
+
 	Magick::Image  magick( Magick::Blob(preview.pData(), preview.size()) );
 
 	magick.filterType(Magick::LanczosFilter);
 	magick.quality(70);
-	char  tmp[5];
-	sprintf(tmp, "%ld", PREVIEW_LIMIT);
+	char  tmp[15];
+	snprintf(tmp, 14, "%ld", PREVIEW_LIMIT);
 	magick.resize(Magick::Geometry(tmp));
+
+	std::ostringstream  exif;
+	for (int i=0; i<5; i++) {
+	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etags[i]);
+	    if (e == exif_.end()) {
+		continue;
+	    }
+	    exif << *e << " ";
+	}
+	exif << width_ << "x" << height_;
+
+	Magick::Image  info("600x30", "grey");
+	//info.font("@Arial.ttf");
+	//info.matte(true);
+	//info.channel(MagickCore::OpacityChannel);
+	//info.colorFuzz(MaxRGB*0.5);
+	//info.opaque("black", "grey");
+
+	info.fontPointsize(18);
+	info.annotate(exif.str(), Magick::Geometry("+10+10"), MagickCore::WestGravity);
+	info.opacity(65535/3.0);
+	info.transparent("grey");
+
+	magick.composite(info,
+		         Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
+			 MagickCore::DissolveCompositeOp);
 
 	magick.write(&prevwBuf_.magick.blob);
 
@@ -282,18 +320,34 @@ int main(int argc, char* const argv[])
 		{
 		    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(filename);
 		    orig->readMetadata();
+		    cout << filename << ": x=" << orig->pixelWidth() << " y=" << orig->pixelHeight() << endl;
 
-		    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType);
+		    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType, orig->pixelWidth(), orig->pixelHeight(), orig->exifData());
 		}
 
 		cout << filename << ": " << mimeType << " " << prevwbuf.exiv2.memio.size() << endl;
 
 		prevwbuf.exiv2.memio.seek(0, Exiv2::BasicIo::beg);
 
-		unsigned char*  buf = new unsigned char[prevwbuf.exiv2.memio.size()];
-		memcpy(buf, prevwbuf.exiv2.memio.mmap(), prevwbuf.exiv2.memio.size());
+		//unsigned char*  buf = new unsigned char[prevwbuf.exiv2.memio.size()];
+		//memcpy(buf, prevwbuf.exiv2.memio.mmap(), prevwbuf.exiv2.memio.size());
 		//prevwbuf.exiv2.memio.munmap(); -- this is an apparent error in valgrind
-		delete []  buf;
+
+
+		char  path[PATH_MAX];
+		sprintf(path, "%s-%ld-%02ld.dat", argv0, getpid(), a-1);
+
+		int  fd;
+		if ( (fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, msk | 0666)) < 0) {
+		    printf("failed to create gen'd file, %s - %s\n", path, strerror(errno));
+		}
+		else
+		{
+		    write(fd, prevwbuf.exiv2.memio.mmap(), prevwbuf.exiv2.memio.size());
+		    close(fd);
+		}
+
+		//delete []  buf;
 	    }
 	    catch (const Exiv2::AnyError& e)
 	    {
