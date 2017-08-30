@@ -272,7 +272,7 @@ class _ExifProxy
 };
 
 const string               _ExifProxy::_XMPKEY = "Xmp.xmp.Rating";
-const Exiv2::XmpTextValue  _ExifProxy::_XMPVAL = Exiv2::XmpTextValue("1");
+const Exiv2::XmpTextValue  _ExifProxy::_XMPVAL = Exiv2::XmpTextValue("5");
 
 
 ostream&  operator<<(ostream& os_, const _ExifProxy& obj_)
@@ -337,8 +337,7 @@ _exiv2_rating_setunset(GSimpleAction *simple, GVariant *parameter, gpointer user
     _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                         NULL,
                         plugin->exifproxy->fliprating() ? 
-                            (plugin->exifproxy->rated() ? "rated" : "un-rated") :
-                            "-/-");
+                            (plugin->exifproxy->rated() ? "XMP Rating: *****" : "XMP Rating: -----") : "XMP Rating: -/-");
 }
 
 static void
@@ -447,7 +446,7 @@ eog_exiv2_ratings_plugin_update_action_state (EogExiv2RatingPlugin *plugin, EogT
             _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                                 NULL,
                                 plugin->exifproxy->valid() ? 
-                                    (plugin->exifproxy->rated() ? "rated" : "un-rated") : "-/-");
+                                    (plugin->exifproxy->rated() ? "XMP Rating: *****" : "XMP Rating: -----") : "-/-");
         }
     }
 
