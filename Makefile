@@ -6,7 +6,7 @@ install:	all
 	cp libexiv2_ratings.so exiv2_ratings.plugin /usr/lib64/eog/plugins/
 
 #CXXFLAGS += -gdwarf-2 -DNDEBUG
-CXXFLAGS += -DNDEBUG
+CXXFLAGS += -Wconversion-null -DNDEBUG
 
 objs:		exiv2_pixbuf_loader.o eog_plugin_exiv2_ratings.o
 
