@@ -29,7 +29,7 @@ xmp:	xmp.cc
 
 
 eog_plugin_exiv2_ratings.o:	eog_plugin_exiv2_ratings.cc 
-	g++ $(CXXFLAGS) -c -fPIC -fpermissive -g $(shell pkg-config eog --cflags) $(shell pkg-config exiv2 --cflags)  $(shell pkg-config libpeas-gtk-1.0 --cflags) $^
+	g++ $(CXXFLAGS) -c -fPIC -fpermissive -g $(shell pkg-config eog --cflags) $(pkg-config libpeas-1.0 --cflags) $(shell pkg-config exiv2 --cflags)  $(shell pkg-config libpeas-gtk-1.0 --cflags) $^
 
 libexiv2_ratings.so:	eog_plugin_exiv2_ratings.o
 	g++ -shared -g $(shell pkg-config eog --libs) $(shell pkg-config exiv2 --libs) $^ -o $@
