@@ -100,17 +100,17 @@ class _ExifProxy
     _ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
     { }
 
-    _ExifProxy&  ref(const EogThumbView& ev_)
+    _ExifProxy&  ref(EogThumbView& ev_)
     {
         return ref(*eog_thumb_view_get_first_selected_image(&ev_));
     }
 
-    _ExifProxy&  ref(const EogWindow& ew_)
+    _ExifProxy&  ref(EogWindow& ew_)
     {
         return ref( *eog_window_get_image(&ew_) );
     }
 
-    _ExifProxy&  ref(const EogImage& ei_)
+    _ExifProxy&  ref(EogImage& ei_)
     {
         GFile*  f = eog_image_get_file(&ei_ );
         if ( f == NULL) {
@@ -165,6 +165,31 @@ class _ExifProxy
     bool  rated() const
     {
         return _xmp == NULL ? false : _xmpkpos != _xmp->end();
+    }
+
+    const char*  rating()
+    {
+        static const string  DEFLT_RATING = "XMP Rating: -----";
+        _rating = DEFLT_RATING;
+
+        if (rated())
+        {
+            // spec say -1..5
+            long  N = _xmpkpos->toLong();
+            if (N < 0) {
+            }
+            else
+            {
+                if (N > 5) {
+                    N = 5;
+                }
+                char*  n = ((char*)_rating.c_str())+12;
+                for (int i=0; i<N; i++) {
+                    n[i] = '*';
+                }
+            }
+        }
+        return _rating.c_str();
     }
 
     /* mark the image if its not already rated
@@ -258,6 +283,7 @@ class _ExifProxy
     Exiv2::XmpData::iterator  _xmpkpos;
 
     string  _file;
+    string  _rating;
 
 
     void  _clear()
@@ -266,6 +292,7 @@ class _ExifProxy
         _file.clear();
         _img.reset();
         _mtime = 0;
+        _rating.clear();
     }
 
     _ExifProxy::History  _history;
@@ -336,8 +363,7 @@ _exiv2_rating_setunset(GSimpleAction *simple, GVariant *parameter, gpointer user
 
     _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                         NULL,
-                        plugin->exifproxy->fliprating() ? 
-                            (plugin->exifproxy->rated() ? "XMP Rating: *****" : "XMP Rating: -----") : "XMP Rating: -/-");
+                        plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "XMP Rating: -/-");
 }
 
 static void
@@ -446,7 +472,7 @@ eog_exiv2_ratings_plugin_update_action_state (EogExiv2RatingPlugin *plugin, EogT
             _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                                 NULL,
                                 plugin->exifproxy->valid() ? 
-                                    (plugin->exifproxy->rated() ? "XMP Rating: *****" : "XMP Rating: -----") : "-/-");
+                                    plugin->exifproxy->rating() : "-/-");
         }
     }
 
