@@ -34,6 +34,8 @@ eog_plugin_exiv2_ratings.o:	eog_plugin_exiv2_ratings.cc
 libexiv2_ratings.so:	eog_plugin_exiv2_ratings.o
 	g++ -shared -g $(shell pkg-config eog --libs) $(shell pkg-config exiv2 --libs) $^ -o $@
 
-
 leak:	leak.cc
 	g++ -g  $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) -o $@
+
+mag:	mag.cc
+	g++ -g  $(shell pkg-config Magick++ --cflags) $^  $(shell pkg-config Magick++ --libs) -o $@
