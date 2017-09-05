@@ -240,6 +240,12 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
         info.opacity(65535/3.0);
 	info.transparent("grey");
 
+	if (info.columns() > magick.columns()-10) {
+	    std::ostringstream  os;
+            os << magick.columns()-10 << "x";
+            info.resize(os.str());
+        }
+
 	magick.composite(info,
 		         Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
 			 MagickCore::DissolveCompositeOp);
