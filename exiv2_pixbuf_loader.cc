@@ -163,7 +163,8 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
      * edge) then try to either get another preview image or to scale it 
      * using Magick++
      */
-    unsigned short  PREVIEW_LIMIT = getenv("EXIV2_PIXBUF_LOADER_SCALE_LIMIT") == NULL ? 4288 : (unsigned short)atoi(getenv("EXIV2_PIXBUF_LOADER_SCALE_LIMIT"));  // D300's 12mpxl limit
+    const char*  PREVIEW_LIMIT_ENV = "EXIV2_PIXBUF_LOADER_SCALE_LIMIT";
+    unsigned short  PREVIEW_LIMIT = getenv(PREVIEW_LIMIT_ENV) == NULL ? 4288 : (unsigned short)atoi(getenv(PREVIEW_LIMIT_ENV));  // D300's 12mpxl limit
     Exiv2::PreviewPropertiesList::reverse_iterator  p = list.rbegin();
     Exiv2::PreviewPropertiesList::reverse_iterator  pp = list.rend();
     unsigned  i = 0;
@@ -211,20 +212,32 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 	    if (e == exif_.end()) {
 		continue;
 	    }
-	    exif << *e << " ";
+
+	    exif << *e;
+	    switch (i)
+	    {
+		case 0:
+		    exif << "  " << width_ << "x" << height_ << "\n";
+		    break;
+
+		case 1:
+		    exif << '\n';
+		    break;
+
+		case 4:
+		    exif << "ISO";
+		default:
+		    exif << "  ";
+	    }
 	}
-	exif << width_ << "x" << height_;
 
-	Magick::Image  info("600x30", "grey");
-	//info.font("@Arial.ttf");
-	//info.matte(true);
-	//info.channel(MagickCore::OpacityChannel);
-	//info.colorFuzz(MaxRGB*0.5);
-	//info.opaque("black", "grey");
-
-	info.fontPointsize(18);
+	Magick::Image  info(Magick::Geometry(magick.columns(), magick.rows()), "grey");
+        info.borderColor("grey");
+        info.fontPointsize(18);
 	info.annotate(exif.str(), Magick::Geometry("+10+10"), MagickCore::WestGravity);
-	info.opacity(65535/3.0);
+        info.trim();
+        info.border();
+        info.opacity(65535/3.0);
 	info.transparent("grey");
 
 	magick.composite(info,
