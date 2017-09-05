@@ -192,7 +192,10 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 
 	static const Exiv2::ExifKey  etags[] = {
 	    Exiv2::ExifKey("Exif.Image.Model"),
+
 	    Exiv2::ExifKey("Exif.Image.DateTime"), 
+
+	    Exiv2::ExifKey("Exif.Photo.FocalLength"),
 	    Exiv2::ExifKey("Exif.Photo.ExposureTime"), 
 	    Exiv2::ExifKey("Exif.Photo.FNumber"), 
 	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
@@ -207,9 +210,10 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 	magick.resize(Magick::Geometry(tmp));
 
 	std::ostringstream  exif;
-	for (int i=0; i<5; i++) {
+	for (int i=0; i<sizeof(etags)/sizeof(Exiv2::ExifKey); i++) {
 	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etags[i]);
 	    if (e == exif_.end()) {
+		exif << "[N/F:" << etags[i].key() << "]";
 		continue;
 	    }
 
@@ -217,14 +221,20 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 	    switch (i)
 	    {
 		case 0:
+		{
 		    exif << "  " << width_ << "x" << height_ << "\n";
-		    break;
+		    Exiv2::ExifData::const_iterator  ln = lensName(exif_);
+		    if (ln != exif_.end()) { 
+			// TODO - this doesnt work for nikon but ok for canon
+			exif << *ln << "\n";
+		    }
+		} break;
 
 		case 1:
 		    exif << '\n';
 		    break;
 
-		case 4:
+		case 5:
 		    exif << "ISO";
 		default:
 		    exif << "  ";
