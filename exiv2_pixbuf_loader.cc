@@ -225,8 +225,7 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 		    exif << "  " << width_ << "x" << height_ << "\n";
 		    Exiv2::ExifData::const_iterator  ln = lensName(exif_);
 		    if (ln != exif_.end()) { 
-			// TODO - this doesnt work for nikon but ok for canon
-			exif << *ln << "\n";
+			exif << ln->print(&exif_) << "\n";
 		    }
 		} break;
 
