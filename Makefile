@@ -4,8 +4,8 @@ install:	all
 	gdk-pixbuf-query-loaders-64 > /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders.cache
 	cp libexiv2_ratings.so eog-plugin/exiv2_ratings.plugin /usr/lib64/eog/plugins/
 
-# DEBUG_FLAGS = -DNDEBUG
-DEBUG_FLAGS = -g
+DEBUG_FLAGS = -DNDEBUG -O2
+#DEBUG_FLAGS = -g
 CXXFLAGS += -Wconversion-null $(DEBUG_FLAGS)
 
 
