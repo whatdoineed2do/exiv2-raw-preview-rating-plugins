@@ -95,7 +95,7 @@ class DbgHlpr
     { 
 	const mode_t  umsk = umask(0);
 	umask(umsk);
-	if ( (_fd = open("/tmp/exiv2_pixbuf_loader.log", O_CREAT | O_WRONLY | O_APPEND, umsk | 0666)) < 0) {
+	if ( (_fd = open("exiv2_pixbuf_loader.log", O_CREAT | O_WRONLY | O_APPEND, umsk | 0666)) < 0) {
 	    printf("failed to create debug log - %s\n", strerror(errno));
 	}
 	log(__FILE__, __LINE__, "starting", NULL);
@@ -540,7 +540,7 @@ static void  _previewImage(const unsigned char* buf_, ssize_t bufsz_, PrevwBuf& 
 		 */
 		if ( (d = exif_.findKey(Exiv2::ExifKey("Exif.Nikon3.ColorSpace")) ) != exif_.end())
 		{
-		    DBG_LOG("found Nikon color space", NULL);
+		    DBG_LOG(DbgHlpr::concat("found Nikon color space, val=", d->toLong()).c_str(), NULL);
 		    /* found the nikon tag that tells us 0=srgb, 1=argb but need to check if
 		     * this is as-shot with no further mods (ie colorspace conv)
 		     */
