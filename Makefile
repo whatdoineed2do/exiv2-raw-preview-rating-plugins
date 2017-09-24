@@ -6,7 +6,7 @@ install:	all
 
 DEBUG_FLAGS = -DNDEBUG -O2
 #DEBUG_FLAGS = -g
-CXXFLAGS += -Wconversion-null $(DEBUG_FLAGS)
+CXXFLAGS += -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS)
 
 
 TEST_BINS = gpixbuf gpixbufldr xmp leak mag
