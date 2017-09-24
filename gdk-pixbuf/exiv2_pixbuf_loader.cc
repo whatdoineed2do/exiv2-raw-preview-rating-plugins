@@ -147,10 +147,18 @@ struct PrevwBuf
     } magick;
 };
 
-
-static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwBuf_, std::string& mimeType_, 
-			   int width_, int height_, const Exiv2::ExifData& exif_)
+static void  _previewImage(const unsigned char* buf_, ssize_t bufsz_, PrevwBuf&  prevwBuf_, std::string& mimeType_)
 {
+    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf_, bufsz_);
+    orig->readMetadata();
+
+    Exiv2::PreviewManager  exvprldr_(*orig);
+
+    const int  width_ = orig->pixelWidth();
+    const int  height_ = orig->pixelHeight();
+    const Exiv2::ExifData  exif_ = orig->exifData();
+
+
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
     DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
@@ -291,7 +299,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
     long sz = ftell(f_);
 
     fseek(f_, 0, SEEK_SET);
-    char*  buf = (char*)malloc(sz);
+    unsigned char*  buf = (unsigned char*)malloc(sz);
     memset(buf, 0, sz);
     if ( (fread (buf, 1, sz, f_)) != sz) {
     }
@@ -301,11 +309,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
     {
 	std::string  mimeType;
 	PrevwBuf  prevwbuf;
-	{
-	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf, sz);
-	    orig->readMetadata();
-	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType, orig->pixelWidth(), orig->pixelHeight(), orig->exifData());
-	}
+        _previewImage(buf, sz, prevwbuf, mimeType);
 
 	Exiv2::BasicIo&  rawio = prevwbuf.exiv2.memio;
         rawio.seek(0, Exiv2::BasicIo::beg);
@@ -405,11 +409,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     {
 	std::string  mimeType;
 	PrevwBuf  prevwbuf;
-	{
-	    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(ctx->data->data, ctx->data->len);
-	    orig->readMetadata();
-	    _previewImage(Exiv2::PreviewManager(*orig), prevwbuf, mimeType, orig->pixelWidth(), orig->pixelHeight(), orig->exifData());
-	}
+        _previewImage( ctx->data->data, ctx->data->len, prevwbuf, mimeType);
 
 #if 0
         /* this doesnt work as EOG is/has already tried to read the EXIF from 
