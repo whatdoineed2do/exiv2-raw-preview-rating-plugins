@@ -1,3 +1,7 @@
+%.o	: %.cc  ;	$(CXX) -c $(CXXFLAGS) $<
+%.o	: %.c   ;	$(CC)  -c $(CFLAGS) $<
+
+
 all:	objs libexiv2_pixbuf_loader.so libexiv2_ratings.so 
 install:	all
 	cp libexiv2_pixbuf_loader.so /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/
@@ -11,7 +15,7 @@ CXXFLAGS += -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS)
 
 TEST_BINS = gpixbuf gpixbufldr xmp leak mag
 
-objs:		exiv2_pixbuf_loader.o eog_plugin_exiv2_ratings.o
+objs:	ImgFactory.o exiv2_pixbuf_loader.o eog_plugin_exiv2_ratings.o
 clean:
 	rm -f $(TEST_BINS) *.o *.so
 
@@ -24,6 +28,7 @@ gpixbufldr:	tests/gpixbufldr.c
 	gcc $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config gtk+-3.0 --cflags) $(shell pkg-config gdk-pixbuf-2.0 --libs) $(shell pkg-config gtk+-3.0 --libs) $^ -o $@
 
 
+ImgFactory.o:	gdk-pixbuf/ImgFactory.cc gdk-pixbuf/ImgFactory.h
 exiv2_pixbuf_loader.o:	gdk-pixbuf/exiv2_pixbuf_loader.cc
 	g++ $(CXXFLAGS) -c -fPIC  $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^
 
@@ -33,6 +38,7 @@ libexiv2_pixbuf_loader.so:	exiv2_pixbuf_loader.o
 
 xmp:	tests/xmp.cc
 	g++ $(CXXFLAGS) $(shell pkg-config exiv2 --cflags --libs) $^ -o $@
+
 
 
 eog_plugin_exiv2_ratings.o:	eog-plugin/eog_plugin_exiv2_ratings.cc 
