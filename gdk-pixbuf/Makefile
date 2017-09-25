@@ -7,8 +7,6 @@ install:	all
 	cp libexiv2_pixbuf_loader.so /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/
 	gdk-pixbuf-query-loaders-64 > /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders.cache
 
-#DEBUG_FLAGS = -DNDEBUG -O2
-DEBUG_FLAGS = -ggdb
 CXXFLAGS += -fpermissive -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS) -fPIC  $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags)
 
 
