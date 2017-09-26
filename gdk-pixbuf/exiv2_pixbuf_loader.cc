@@ -34,6 +34,8 @@
 
 #include <memory>
 #include <sstream>
+#include <unordered_map>
+#include <utility>
 
 #define GDK_PIXBUF_ENABLE_BACKEND
 #include <gdk-pixbuf/gdk-pixbuf-io.h>
@@ -51,6 +53,98 @@ G_MODULE_EXPORT void fill_info (GdkPixbufFormat *info);
 
 namespace Exiv2GdkPxBufLdr
 {
+class PixbufLdrCache {
+  public:
+    using Cache = std::unordered_map<std::string, GdkPixbufLoader*>;
+
+    PixbufLdrCache() = default;
+    ~PixbufLdrCache()
+    {
+	for (auto& c : _cache) {
+	    g_object_unref(c.second);
+	}
+    }
+
+    PixbufLdrCache(const PixbufLdrCache&) = delete;
+    PixbufLdrCache& operator=(const PixbufLdrCache&) = delete;
+
+    GdkPixbufLoader*  operator[](const std::string& idx_)
+    {
+	auto e = _cache.find(idx_);
+	if (e != _cache.end()) {
+	    return e->second;
+	}
+
+	GdkPixbufLoader*  ldr = NULL;
+	if ( (ldr = gdk_pixbuf_loader_new_with_mime_type(idx_.c_str(), NULL)) ) {
+	    _cache.insert(std::make_pair(idx_, ldr));
+	}
+	return ldr;
+    }
+
+  private:
+    PixbufLdrCache::Cache  _cache;
+};
+
+
+struct PixbufLdrBuf
+{
+    PixbufLdrBuf() : pixbuf(NULL), loader(NULL) { }
+    PixbufLdrBuf(PixbufLdrBuf& rhs_): pixbuf(rhs_.pixbuf), loader(rhs_.loader)
+    {
+	DBG_LOG("unexpected call, expecting RVO usage", NULL);
+	if (loader) {
+	    g_object_ref(loader);
+	}
+    }
+    ~PixbufLdrBuf()
+    {
+	if (loader) {
+	    g_object_unref(loader);
+	}
+    }
+    PixbufLdrBuf& operator=(const PixbufLdrBuf&) = delete;
+
+    GdkPixbuf*  pixbuf;
+    GdkPixbufLoader*  loader;
+};
+
+PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string& mimeType_, GError**& error_)
+{
+    PixbufLdrBuf  rvo;
+
+    /* let the other better placed loaders deal with the RAW img
+     * preview (tif/jpeg)
+     */
+    rvo.loader = gdk_pixbuf_loader_new_with_mime_type(mimeType_.c_str(), error_);
+    DBG_LOG(DbgHlpr::concat("pixbuf loader=", (void*)rvo.loader).c_str(), error_);
+    DBG_LOG(DbgHlpr::concat("prev mime type=", mimeType_.c_str()).c_str(), NULL);
+    DBG_LOG(DbgHlpr::concat("buf=", prevwbuf_.sz()).c_str(), NULL);
+    if (error_ && *error_) {
+	g_error_free(*error_);
+	*error_ = NULL;
+	printf("no known loader for explicit mimetype, defaulting\n");
+	if (rvo.loader != NULL) {
+	    gdk_pixbuf_loader_close(rvo.loader, NULL);
+	    g_object_unref(rvo.loader);
+	}
+	rvo.loader = gdk_pixbuf_loader_new();
+    }
+
+    if (gdk_pixbuf_loader_write(rvo.loader, prevwbuf_.buf(), prevwbuf_.sz(), error_) != TRUE)
+    {
+	printf("%s, line %ld - sload, internal loader failed, rawio buf=%ld size=%ld  err=%s\n", __FILE__, __LINE__, prevwbuf_.buf(), prevwbuf_.sz(), (error_ == NULL || error_ && *error_ == NULL ? "<>" : (*error_)->message));
+    }
+    else
+    {
+	gdk_pixbuf_loader_close(rvo.loader, NULL);
+	rvo.pixbuf = gdk_pixbuf_loader_get_pixbuf(rvo.loader);
+	DBG_LOG(DbgHlpr::concat("internal load complete, pixbuf=", (void*)rvo.pixbuf).c_str(), NULL);
+    }
+
+    return rvo;
+}
+
 struct Exiv2PxbufCtx
 {
     GdkPixbufModuleSizeFunc     size_func;
@@ -72,7 +166,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 {
     GdkPixbuf*  pixbuf = NULL;
 
-    DBG_LOG("starting load", NULL);
+    DBG_LOG("starting FILE load", NULL);
 
     try
     {
@@ -80,21 +174,8 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 	ImgFactory::Buf  prevwbuf;
 	ImgFactory::instance().create(f_, prevwbuf, mimeType);
 
-        // let the other better placed loaders deal with the RAW img
-        // preview (tif/jpeg/png
-        //
-        GdkPixbufLoader*  gpxbldr = NULL;
-        gpxbldr = gdk_pixbuf_loader_new_with_mime_type(mimeType.c_str(), err_);
-        if (err_ && *err_) {
-            g_error_free(*err_);
-            *err_ = NULL;
-
-            gpxbldr = gdk_pixbuf_loader_new();
-        }
-        gdk_pixbuf_loader_write(gpxbldr, prevwbuf.buf(), prevwbuf.sz(), NULL);
-        pixbuf = gdk_pixbuf_loader_get_pixbuf (gpxbldr);
-        gdk_pixbuf_loader_close(gpxbldr, NULL);
-	g_object_unref(gpxbldr);
+	const Exiv2GdkPxBufLdr::PixbufLdrBuf&&  plb = Exiv2GdkPxBufLdr::_createPixbuf(prevwbuf, mimeType, err_);
+	pixbuf = plb.pixbuf;
     }
     catch (const std::exception& ex)
     {
@@ -163,7 +244,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     gboolean result = FALSE;
 
-    DBG_LOG(DbgHlpr::concat("_gpxbuf_sload, len=", ctx->data->len).c_str(), NULL);
+    DBG_LOG(DbgHlpr::concat("starting buf _gpxbuf_sload, len=", ctx->data->len).c_str(), NULL);
 
     try
     {
@@ -171,51 +252,20 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 	ImgFactory::Buf  prevwbuf;
 	ImgFactory::instance().create((unsigned char*)ctx->data->data, (ssize_t)ctx->data->len, prevwbuf, mimeType);
 
-        /* let the other better placed loaders deal with the RAW img
-         * preview (tif/jpeg)
-         */
-        GdkPixbufLoader*  gpxbldr = gdk_pixbuf_loader_new_with_mime_type(mimeType.c_str(), error_);
-	DBG_LOG(DbgHlpr::concat("pixbuf loader=", (void*)gpxbldr).c_str(), error_);
-	DBG_LOG(DbgHlpr::concat("prev mime type=", mimeType.c_str()).c_str(), NULL);
-	DBG_LOG(DbgHlpr::concat("buf=", prevwbuf.sz()).c_str(), NULL);
-        if (error_ && *error_) {
-            g_error_free(*error_);
-            *error_ = NULL;
-            printf("no known loader for explicit mimetype, defaulting\n");
-            if (gpxbldr != NULL) {
-                gdk_pixbuf_loader_close(gpxbldr, NULL);
-		g_object_unref(gpxbldr);
-            }
-            gpxbldr = gdk_pixbuf_loader_new();
-        }
-
-        if (gdk_pixbuf_loader_write(gpxbldr, prevwbuf.buf(), prevwbuf.sz(), error_) != TRUE)
+	const Exiv2GdkPxBufLdr::PixbufLdrBuf&&  plb = Exiv2GdkPxBufLdr::_createPixbuf(prevwbuf, mimeType, error_);
+	if (plb.pixbuf) 
 	{
-            printf("%s, line %ld - sload, internal loader failed, rawio buf=%ld size=%ld  err=%s\n", __FILE__, __LINE__, prevwbuf.buf(), prevwbuf.sz(), (error_ == NULL || error_ && *error_ == NULL ? "<>" : (*error_)->message));
-	}
-	else
-        {
-	    gdk_pixbuf_loader_close(gpxbldr, NULL);
-            GdkPixbuf*  pixbuf = gdk_pixbuf_loader_get_pixbuf(gpxbldr);
-	    DBG_LOG(DbgHlpr::concat("sload, internal load complete, pixbuf=", (void*)pixbuf).c_str(), NULL);
-
-	    if (pixbuf == NULL) {
+	    if (ctx->prepared_func != NULL) {
+		(*ctx->prepared_func)(plb.pixbuf, NULL, ctx->user_data);
 	    }
-	    else
-	    {
-		if (ctx->prepared_func != NULL) {
-		    (*ctx->prepared_func)(pixbuf, NULL, ctx->user_data);
-		}
-		if (ctx->updated_func != NULL) {
-		    (*ctx->updated_func)(pixbuf, 0, 0, 
-					 gdk_pixbuf_get_width(pixbuf), 
-					 gdk_pixbuf_get_height(pixbuf),
-					 ctx->user_data);
-		}
-		result = TRUE;
+	    if (ctx->updated_func != NULL) {
+		(*ctx->updated_func)(plb.pixbuf, 0, 0, 
+				     gdk_pixbuf_get_width(plb.pixbuf), 
+				     gdk_pixbuf_get_height(plb.pixbuf),
+				     ctx->user_data);
 	    }
+	    result = TRUE;
         }
-        g_object_unref(gpxbldr);
     }
     catch (const std::exception& ex)
     {
