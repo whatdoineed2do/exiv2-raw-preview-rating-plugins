@@ -53,40 +53,6 @@ G_MODULE_EXPORT void fill_info (GdkPixbufFormat *info);
 
 namespace Exiv2GdkPxBufLdr
 {
-class PixbufLdrCache {
-  public:
-    using Cache = std::unordered_map<std::string, GdkPixbufLoader*>;
-
-    PixbufLdrCache() = default;
-    ~PixbufLdrCache()
-    {
-	for (auto& c : _cache) {
-	    g_object_unref(c.second);
-	}
-    }
-
-    PixbufLdrCache(const PixbufLdrCache&) = delete;
-    PixbufLdrCache& operator=(const PixbufLdrCache&) = delete;
-
-    GdkPixbufLoader*  operator[](const std::string& idx_)
-    {
-	auto e = _cache.find(idx_);
-	if (e != _cache.end()) {
-	    return e->second;
-	}
-
-	GdkPixbufLoader*  ldr = NULL;
-	if ( (ldr = gdk_pixbuf_loader_new_with_mime_type(idx_.c_str(), NULL)) ) {
-	    _cache.insert(std::make_pair(idx_, ldr));
-	}
-	return ldr;
-    }
-
-  private:
-    PixbufLdrCache::Cache  _cache;
-};
-
-
 struct PixbufLdrBuf
 {
     PixbufLdrBuf() : pixbuf(NULL), loader(NULL) { }
