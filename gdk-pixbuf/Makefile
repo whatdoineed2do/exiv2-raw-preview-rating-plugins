@@ -27,6 +27,7 @@ libexiv2_pixbuf_loader.so:	$(OBJS)
 	g++ -shared $(shell pkg-config gdk-pixbuf-2.0 --libs) $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) $^ -o $@
 
 
-leak:	leak.cc ImgFactory.h DbgHlpr.h
-	g++ -ggdb  $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) ImgFactory.o DbgHlpr.o -o $@
+leak.o:	leak.cc ImgFactory.h DbgHlpr.h
+leak:	leak.o ImgFactory.o DbgHlpr.o
+	g++ -ggdb  $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) -o $@
 

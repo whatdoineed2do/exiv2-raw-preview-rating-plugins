@@ -58,7 +58,7 @@ struct PixbufLdrBuf
     PixbufLdrBuf() : pixbuf(NULL), loader(NULL) { }
     PixbufLdrBuf(PixbufLdrBuf& rhs_): pixbuf(rhs_.pixbuf), loader(rhs_.loader)
     {
-	DBG_LOG("unexpected call, expecting RVO usage", NULL);
+	DBG_LOG("unexpected call, expecting RVO usage");
 	if (loader) {
 	    g_object_ref(loader);
 	}
@@ -75,6 +75,14 @@ struct PixbufLdrBuf
     GdkPixbufLoader*  loader;
 };
 
+std::ostream& operator<<(std::ostream& os_, GError**& err_)
+{
+    if (err_ && *err_) {
+	os_ << *err_;
+    }
+    return os_;
+}
+
 PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string& mimeType_, GError**& error_)
 {
     PixbufLdrBuf  rvo;
@@ -83,9 +91,7 @@ PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string&
      * preview (tif/jpeg)
      */
     rvo.loader = gdk_pixbuf_loader_new_with_mime_type(mimeType_.c_str(), error_);
-    DBG_LOG(DbgHlpr::concat("pixbuf loader=", (void*)rvo.loader).c_str(), error_);
-    DBG_LOG(DbgHlpr::concat("prev mime type=", mimeType_.c_str()).c_str(), NULL);
-    DBG_LOG(DbgHlpr::concat("buf=", prevwbuf_.sz()).c_str(), NULL);
+    DBG_LOG("pixbuf loader=", (void*)rvo.loader, " prev mime type=", mimeType_, " buf=", prevwbuf_.sz(), " err=", error_);
     if (error_ && *error_) {
 	g_error_free(*error_);
 	*error_ = NULL;
@@ -105,7 +111,7 @@ PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string&
     {
 	gdk_pixbuf_loader_close(rvo.loader, NULL);
 	rvo.pixbuf = gdk_pixbuf_loader_get_pixbuf(rvo.loader);
-	DBG_LOG(DbgHlpr::concat("internal load complete, pixbuf=", (void*)rvo.pixbuf).c_str(), NULL);
+	DBG_LOG("internal load complete, pixbuf=", (void*)rvo.pixbuf);
     }
 
     return rvo;
@@ -132,7 +138,7 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
 {
     GdkPixbuf*  pixbuf = NULL;
 
-    DBG_LOG("starting FILE load", NULL);
+    DBG_LOG("starting FILE load");
 
     try
     {
@@ -178,7 +184,7 @@ gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
     ctx->data = g_byte_array_new();
 
 #ifndef NDEBUG
-    DBG_LOG("begin load", NULL);
+    DBG_LOG("begin load");
     const mode_t  umsk = umask(0);
     umask(umsk);
     if ( (ctx->fd = open("exiv2_pixbuf_incrload.dat", O_CREAT | O_TRUNC | O_WRONLY, umsk | 0666)) < 0) {
@@ -198,7 +204,7 @@ gboolean _gpxbuf_lincr(gpointer ctx_,
                        const guchar* buf_, guint size_,
                        GError **error_)
 {
-    DBG_LOG(DbgHlpr::concat("incr load, bytes=", size_).c_str(), NULL);
+    DBG_LOG("incr load, bytes=", size_);
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     g_byte_array_append(ctx->data, buf_, size_);
     return TRUE;
@@ -210,7 +216,7 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     gboolean result = FALSE;
 
-    DBG_LOG(DbgHlpr::concat("starting buf _gpxbuf_sload, len=", ctx->data->len).c_str(), NULL);
+    DBG_LOG("starting buf _gpxbuf_sload, len=", ctx->data->len);
 
     try
     {

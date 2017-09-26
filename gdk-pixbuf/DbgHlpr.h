@@ -25,45 +25,23 @@ class DbgHlpr
 	return *DbgHlpr::_instance;
     }
 
+    DbgHlpr();
     ~DbgHlpr() { close(_fd); }
 
     DbgHlpr(const DbgHlpr&) = delete;
     DbgHlpr& operator=(const DbgHlpr&) = delete;
 
-    void  log(const char* _file_, const int _line_, const char* msg_)
+
+    template<typename ... Args>
+    void  log(const char* file_, const int line_, Args&&...args_)
     {
-	std::ostringstream  os;
-	os << _pid << ":  " << _file_ << ", " << _line_ << " :";
-	if (msg_) {
-	    os << "  " << msg_;
-	}
+	std::ostringstream  dump;
+	dump << _pid << ": " << file_ << ", " << line_ << ": ";
+	_log(file_, line_, dump, std::forward<Args>(args_)...);
+	dump << '\n';
 
-#if 0
-	if (err_ && *err_) {
-	    os << "  err=" << (*err_)->message;
-	}
-#endif
-	os << "\n";
-	const std::string&&  what = os.str();
+	const std::string&&  what = dump.str();
 	write(_fd, what.c_str(), what.length());
-     }
-
-    template <typename T>
-     static std::string  concat(const char* a_, const T b_)
-     {
-	 std::ostringstream  os;
-	 os << a_ << b_;
-	 return os.str();
-     }
-
-    DbgHlpr() : _fd(0), _pid(getpid())
-    { 
-	const mode_t  umsk = umask(0);
-	umask(umsk);
-	if ( (_fd = open("exiv2_pixbuf_loader.log", O_CREAT | O_WRONLY | O_APPEND, umsk | 0666)) < 0) {
-	    printf("failed to create debug log - %s\n", strerror(errno));
-	}
-	log(__FILE__, __LINE__, "starting");
     }
 
   private:
@@ -71,13 +49,29 @@ class DbgHlpr
 
     const pid_t  _pid;
     int  _fd;
+
+
+    template<typename T>
+    void _log(const char*, const int, std::ostringstream& os_, T&& arg_)
+    {
+	os_ << arg_;
+    }
+
+    // fake recursive variadic function
+    template<typename T, typename ... Args>
+    void  _log(const char* file_, const int line_, std::ostringstream& os_, T&& arg_, Args&&...args_)
+    {
+	os_ << arg_;
+	_log(file_, line_, os_, std::forward<Args>(args_)...);
+    }
+
 };
 
 #ifndef NDEBUG
-  #define DBG_LOG(info, err) \
-    Exiv2GdkPxBufLdr::DbgHlpr::instance().log(__FILE__, __LINE__, info)
+  #define DBG_LOG(...) \
+    Exiv2GdkPxBufLdr::DbgHlpr::instance().log(__FILE__, __LINE__, __VA_ARGS__)
 #else
-  #define DBG_LOG(info, err) 
+  #define DBG_LOG(...) 
 #endif
 
 }

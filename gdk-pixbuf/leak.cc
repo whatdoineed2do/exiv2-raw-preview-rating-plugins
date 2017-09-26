@@ -56,7 +56,7 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& db
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
-    DBG_LOG(Exiv2GdkPxBufLdr::DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+    DBG_LOG("#previews=", list.size());
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due
@@ -134,7 +134,7 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
-    DBG_LOG(Exiv2GdkPxBufLdr::DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+    DBG_LOG("#previews=", list.size());
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due

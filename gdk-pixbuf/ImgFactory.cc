@@ -345,7 +345,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
-    DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+    DBG_LOG("#previews=", list.size());
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due
@@ -379,7 +379,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     if (env.convertSRGB()) 
     {
-	DBG_LOG("request to convert to SRGB", NULL);
+	DBG_LOG("request to convert to SRGB");
 
 	/* to convert, we need to have the current ICC and target ICC
 	 * if the img doesn't have an embedded ICC, we can guess and assign
@@ -400,12 +400,12 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	if (magick.iccColorProfile().length() == 0)
 	{
 	    // no ICC, try to guess what it is...
-	    DBG_LOG("embedded profile == 0", NULL);
+	    DBG_LOG("embedded profile == 0");
 
 	    Exiv2::ExifData::const_iterator  d;
 	    if ((d = exif_.findKey(Exiv2::ExifKey("Exif.Image.InterColorProfile")) ) != exif_.end()) 
             {
-		DBG_LOG(DbgHlpr::concat("found embedded profile, len=", d->size()).c_str(), NULL);
+		DBG_LOG("found embedded profile, len=", d->size());
 		const Exiv2::Value&  val = d->value();
 
                 unsigned char*  buf = new unsigned char[d->size()];
@@ -421,7 +421,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 		 */
 		if ( (d = exif_.findKey(Exiv2::ExifKey("Exif.Nikon3.ColorSpace")) ) != exif_.end())
 		{
-		    DBG_LOG(DbgHlpr::concat("found Nikon color space, val=", d->toLong()).c_str(), NULL);
+		    DBG_LOG("found Nikon color space, val=", d->toLong());
 		    /* found the nikon tag that tells us 0=srgb, 1=argb but need to check if
 		     * this is as-shot with no further mods (ie colorspace conv)
 		     */
@@ -454,7 +454,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	    // finally, try to convert to srgb
 	    try
 	    {
-                DBG_LOG("converting to sRGB", NULL);
+                DBG_LOG("converting to sRGB");
 		magick.profile("ICC", _srgbICC);
 		magick.iccColorProfile(_srgbICC);
 	    }
@@ -468,7 +468,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
     {
-	DBG_LOG(DbgHlpr::concat("scaling preview=", i).c_str(), NULL);
+	DBG_LOG("scaling preview=", i);
 
 	static const Exiv2::ExifKey  etags[] = {
 	    Exiv2::ExifKey("Exif.Image.Model"),
@@ -482,7 +482,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	};
 
 	if (!magick.isValid()) {
-            DBG_LOG("loading from preview for scaling", NULL);
+            DBG_LOG("loading from preview for scaling");
 	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
 	}
 
