@@ -72,6 +72,7 @@ main (int argc, char *argv[])
 
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     image = gtk_image_new_from_pixbuf (pixbuf);
+    g_object_unref(loader);
     gtk_container_add (GTK_CONTAINER (window), image);
     gtk_widget_show_all (GTK_WIDGET (window));
     g_signal_connect (window, "destroy", G_CALLBACK (on_destroy), NULL);
