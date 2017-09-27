@@ -6,6 +6,7 @@
 namespace  Exiv2GdkPxBufLdr
 {
 std::unique_ptr<ImgFactory>  ImgFactory::_instance;
+std::once_flag  ImgFactory::_once;
 
 
 class Env
@@ -16,9 +17,9 @@ class Env
 
     static Env&  instance()
     {
-	if (Env::_instance.get() == NULL) {
+	std::call_once(Env::_once, [](){
 	    Env::_instance = std::make_unique<Env>();
-	}
+	});
 	return *Env::_instance;
     }
 
@@ -50,11 +51,13 @@ class Env
     
   private:
     static std::unique_ptr<Env>  _instance;
+    static std::once_flag  _once;
 
     unsigned short  _previewScaleLimit;
     bool   _convertSRGB;
 };
 std::unique_ptr<Env>  Env::_instance = NULL;
+std::once_flag  Env::_once;
 
 
 
@@ -300,9 +303,9 @@ const unsigned char  NKAdobe[] = {
 
 ImgFactory&  ImgFactory::instance()
 {
-    if (ImgFactory::_instance.get() == NULL) {
+    std::call_once(ImgFactory::_once, [](){
 	ImgFactory::_instance = std::make_unique<ImgFactory>();
-    }
+    });
     return *ImgFactory::_instance;
 }
 

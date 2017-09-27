@@ -5,6 +5,7 @@
 namespace  Exiv2GdkPxBufLdr
 {
 std::unique_ptr<DbgHlpr>  DbgHlpr::_instance;
+std::once_flag  DbgHlpr::_once;
 
 DbgHlpr::DbgHlpr() : _fd(0), _pid(getpid())
 { 

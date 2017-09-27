@@ -92,8 +92,9 @@ class ImgFactory
     ImgFactory::Buf&  create(FILE*, ImgFactory::Buf&, std::string& mimeType_);
     ImgFactory::Buf&  create(const unsigned char* buf_, ssize_t bufsz_, ImgFactory::Buf&, std::string& mimeType_);
 
-    static std::unique_ptr<ImgFactory>  _instance;
   private:
+    static std::unique_ptr<ImgFactory>  _instance;
+    static std::once_flag  _once;
 
     const Magick::Blob  _srgbICC;
     const Magick::Blob  _argbICC;

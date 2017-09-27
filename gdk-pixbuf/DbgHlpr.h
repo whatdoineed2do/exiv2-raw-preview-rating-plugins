@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 
+#include <mutex>
 #include <memory>
 #include <string>
 #include <sstream>
@@ -19,9 +20,10 @@ class DbgHlpr
   public:
     static DbgHlpr&  instance()
     {
-	if (DbgHlpr::_instance.get() == NULL) {
+	std::call_once(DbgHlpr::_once, [](){
 	    DbgHlpr::_instance = std::make_unique<DbgHlpr>();
-	}
+	});
+
 	return *DbgHlpr::_instance;
     }
 
@@ -46,6 +48,7 @@ class DbgHlpr
 
   private:
     static std::unique_ptr<DbgHlpr>  _instance;
+    static std::once_flag  _once;
 
     const pid_t  _pid;
     int  _fd;
