@@ -103,11 +103,7 @@ PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string&
 	rvo.loader = gdk_pixbuf_loader_new();
     }
 
-    if (gdk_pixbuf_loader_write(rvo.loader, prevwbuf_.buf(), prevwbuf_.sz(), error_) != TRUE)
-    {
-	printf("%s, line %ld - sload, internal loader failed, rawio buf=%ld size=%ld  err=%s\n", __FILE__, __LINE__, prevwbuf_.buf(), prevwbuf_.sz(), (error_ == NULL || error_ && *error_ == NULL ? "<>" : (*error_)->message));
-    }
-    else
+    if (gdk_pixbuf_loader_write(rvo.loader, prevwbuf_.buf(), prevwbuf_.sz(), error_) == TRUE)
     {
 	gdk_pixbuf_loader_close(rvo.loader, NULL);
 	rvo.pixbuf = gdk_pixbuf_loader_get_pixbuf(rvo.loader);
@@ -151,11 +147,11 @@ GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
     }
     catch (const std::exception& ex)
     {
-        printf("%s, line %ld - %s\n", __FILE__, __LINE__, ex.what());
+	g_set_error(err_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - ", ex.what());
     }
     catch (...) 
     {
-        printf("%s, line %ld - unknown exception\n", __FILE__, __LINE__);
+	g_set_error(err_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "failed to load/create pixbuf - unknown exception");
     }
     return pixbuf;
 }
@@ -182,18 +178,6 @@ gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
     ctx->updated_func  = updfunc_;
     ctx->user_data     = udata_;
     ctx->data = g_byte_array_new();
-
-#ifndef NDEBUG
-    DBG_LOG("begin load");
-    const mode_t  umsk = umask(0);
-    umask(umsk);
-    if ( (ctx->fd = open("exiv2_pixbuf_incrload.dat", O_CREAT | O_TRUNC | O_WRONLY, umsk | 0666)) < 0) {
-        printf("failed to create dump file - %s\n", strerror(errno));
-        if (*error_ != NULL) {
-            g_set_error_literal(error_, 0, errno, "failed to create dump file");
-        }
-    }
-#endif
 
     return (gpointer)ctx;
 }
@@ -241,11 +225,11 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     }
     catch (const std::exception& ex)
     {
-        printf("%s, line %ld - %s\n", __FILE__, __LINE__, ex.what());
+	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - ", ex.what());
     }
     catch (...) 
     {
-        printf("%s, line %ld - unknown exception\n", __FILE__, __LINE__);
+	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "failed to load/create pixbuf - unknown exception: %s, %ld", __FILE__, __LINE__);
     }
     g_byte_array_free(ctx->data, TRUE);
     g_free(ctx);
