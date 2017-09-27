@@ -447,7 +447,19 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
                             magick.profile("ICC", _argbICC);
 			    convert = true;
 			}
-			DBG_LOG("   Nikon color space ARGB", NULL);
+			DBG_LOG("   Nikon color space ARGB");
+		    }
+		}
+		else
+		{
+		    if ( (d = exif_.findKey(Exiv2::ExifKey("Exif.Canon.ColorSpace")) ) != exif_.end())
+		    {
+			DBG_LOG("found Canon color space, val=", d->toLong());
+			if (d->toLong() == 2) {
+			    DBG_LOG("   color space ARGB");
+                            magick.profile("ICC", _argbICC);
+			    convert = true;
+			}
 		    }
 		}
 	    }
