@@ -944,6 +944,8 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
          *    const Magick::Blob  targetICC(sRGB, sRGBsz);
          *    magick.profile("ICC", targetICC);
          *    magick.iccColorProfile(targetICC);
+         *
+         * exiftool -icc_profile -b -w icc file.{jpg,nef,tif}
 	 */
 	magick.read(Magick::Blob(preview.pData(), preview.size()) );
 
