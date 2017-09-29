@@ -419,49 +419,62 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	    }
 	    else
 	    {
+                struct _ColrSpc {
+                    const char*  key;
+                    bool  ckunmod;
+                };
+                static const _ColrSpc colrSpcs[] = {
+                    { "Exif.Nikon3.ColorSpace", true  },
+                    { "Exif.Canon.ColorSpace",  false },
+                    { NULL, false }
+                };
+
 		/* no embedded ICC so can't do any conversion
 		 * image if its not a Nikon RAW with the colr space set
 		 */
-		if ( (d = exif_.findKey(Exiv2::ExifKey("Exif.Nikon3.ColorSpace")) ) != exif_.end())
-		{
-		    DBG_LOG("found Nikon color space, val=", d->toLong());
-		    /* found the nikon tag that tells us 0=srgb, 1=argb but need to check if
-		     * this is as-shot with no further mods (ie colorspace conv)
+
+                const _ColrSpc*  pcs = colrSpcs;
+                while (pcs->key)
+                {
+                    if ( (d = exif_.findKey(Exiv2::ExifKey(pcs->key)) ) == exif_.end()) {
+                        ++pcs;
+                        continue;
+                    }
+		    DBG_LOG("found color space ", pcs->key, " val=", d->toLong());
+
+                    /* check if this is as-shot with no further mods (ie 
+                     * colorspace conv)
+                     * Nikon CNX2 the only thing that can edit the RAW file???
 		     */
 		    if (d->toLong() == 2)
 		    {
-			// it was shot as aRGB - check the orig vs mod times
-			std::string  orig;
-			std::string  mod;
+                        bool  doit = true;
 
-			Exiv2::ExifData::const_iterator  e;
-			if ( (e = exif_.findKey(Exiv2::ExifKey("Exif.Image.DateTime")) ) != exif_.end()) {
-			    mod = e->toString();
-			}
-			if ( (e = exif_.findKey(Exiv2::ExifKey("Exif.Photo.DateTimeOriginal")) ) != exif_.end()) {
-			    orig = e->toString();
-			}
+                        if (pcs->ckunmod) {
+                            // it was shot as aRGB - check the orig vs mod times
+                            std::string  orig;
+                            std::string  mod;
 
-			if (orig == mod) {
-			    // ok, we'll assume this is really still in aRGB
+                            Exiv2::ExifData::const_iterator  e;
+                            if ( (e = exif_.findKey(Exiv2::ExifKey("Exif.Image.DateTime")) ) != exif_.end()) {
+                                mod = e->toString();
+                            }
+                            if ( (e = exif_.findKey(Exiv2::ExifKey("Exif.Photo.DateTimeOriginal")) ) != exif_.end()) {
+                                orig = e->toString();
+                            }
+
+                            // ok, we'll assume this is really still in aRGB
+                            doit = (orig == mod);
+                            DBG_LOG("   color space is ARGB");
+                        }
+
+                        if (doit) {
+                            convert = true;
                             magick.profile("ICC", _argbICC);
-			    convert = true;
-			}
-			DBG_LOG("   Nikon color space ARGB");
+                        }
 		    }
-		}
-		else
-		{
-		    if ( (d = exif_.findKey(Exiv2::ExifKey("Exif.Canon.ColorSpace")) ) != exif_.end())
-		    {
-			DBG_LOG("found Canon color space, val=", d->toLong());
-			if (d->toLong() == 2) {
-			    DBG_LOG("   color space ARGB");
-                            magick.profile("ICC", _argbICC);
-			    convert = true;
-			}
-		    }
-		}
+                    break;
+                }
 	    }
 	}
 
