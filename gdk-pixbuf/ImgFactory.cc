@@ -28,7 +28,8 @@ class Env
 
     Env() 
 	: _previewScaleLimit(4288),
-	  _convertSRGB(true)
+	  _convertSRGB(true),
+          _rotate(true)
     {
         const char*  ev;
 	const char*  tmp;
@@ -44,6 +45,12 @@ class Env
 	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
 	}
         std::cout << ev << "=" << _convertSRGB << std::endl;
+
+	ev = "EXIV2_PIXBUF_LOADER_ROTATE";
+	if ( (tmp = getenv(ev)) ) {
+	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
+	}
+        std::cout << ev << "=" << _rotate << std::endl;
     }
 
     unsigned short  previewScaleLimit() const
@@ -51,6 +58,9 @@ class Env
 
     bool  convertSRGB() const
     { return _convertSRGB; }
+
+    bool  rotate() const
+    { return _rotate; }
     
   private:
     static std::unique_ptr<Env>  _instance;
@@ -58,6 +68,7 @@ class Env
 
     unsigned short  _previewScaleLimit;
     bool   _convertSRGB;
+    bool   _rotate;
 };
 std::unique_ptr<Env>  Env::_instance = NULL;
 std::once_flag  Env::_once;
@@ -926,8 +937,34 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
     mimeType_ = preview.mimeType();
+    Exiv2::ExifData::const_iterator  d;
 
     Magick::Image  magick;
+
+    if (env.rotate() && 
+        (d = exif_.findKey(Exiv2::ExifKey("Exif.Image.Orientation")) ) != exif_.end()) 
+    {
+        long  orientation = d->toLong();
+        switch (orientation) {
+            case 3:  orientation = 180;  break;
+            case 6:  orientation =  90;  break;
+            case 8:  orientation = -90;  break;
+
+            case 1:
+            case 2: // flip horz
+            case 4: // flip vert
+            case 5: // transpose
+            case 7: // traverse
+            default:
+                 orientation = 0;
+        }
+
+        if (orientation != 0) {
+            DBG_LOG("rotating=", orientation);
+            magick.read(Magick::Blob(preview.pData(), preview.size()) );
+            magick.rotate(orientation);
+        }
+    }
 
     if (env.convertSRGB()) 
     {
@@ -947,7 +984,9 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
          *
          * exiftool -icc_profile -b -w icc file.{jpg,nef,tif}
 	 */
-	magick.read(Magick::Blob(preview.pData(), preview.size()) );
+        if (!magick.isValid()) {
+            magick.read(Magick::Blob(preview.pData(), preview.size()) );
+        }
 
 	bool  convert = false;
 
@@ -956,7 +995,6 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	{
 	    // no ICC, try to guess what it is...
 
-	    Exiv2::ExifData::const_iterator  d;
 	    if ((d = exif_.findKey(Exiv2::ExifKey("Exif.Image.InterColorProfile")) ) != exif_.end()) 
             {
 		DBG_LOG("found embedded profile, len=", d->size(), "  known sRGB profile sizes=", sizeof(sRGB_IEC61966_2_1), " ", sizeof(NKsRGB));
