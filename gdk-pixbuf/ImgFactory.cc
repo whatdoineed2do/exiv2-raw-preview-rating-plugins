@@ -1121,7 +1121,6 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
     {
-	DBG_LOG("scaling preview=", i);
 
 	static const Exiv2::ExifKey  etags[] = {
 	    Exiv2::ExifKey("Exif.Image.Model"),
@@ -1141,8 +1140,15 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
 	magick.filterType(Magick::LanczosFilter);
 	magick.quality(70);
-	char  tmp[15];
-	snprintf(tmp, 14, "%ld", PREVIEW_LIMIT);
+	char  tmp[8];  // its a short, can't be more than 65535
+	const int  len = snprintf(tmp, sizeof(tmp), " %ld ", PREVIEW_LIMIT);
+        if (magick.rows() < magick.columns()) {
+            tmp[len-1] = 'x';
+        }
+        else {
+            tmp[0] = 'x';
+        }
+	DBG_LOG("scaling preview=", i, " to ", tmp);
 	magick.resize(Magick::Geometry(tmp));
 
 	std::ostringstream  exif;
