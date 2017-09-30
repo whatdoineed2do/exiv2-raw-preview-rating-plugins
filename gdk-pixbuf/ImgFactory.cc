@@ -920,19 +920,22 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
      */
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
 
-    Exiv2::PreviewPropertiesList::reverse_iterator  p = list.rbegin();
-    Exiv2::PreviewPropertiesList::reverse_iterator  pp = list.rend();
+    Exiv2::PreviewPropertiesList::iterator  p = list.begin();
+    Exiv2::PreviewPropertiesList::iterator  pp = list.end();
     unsigned  i = 0;
-    while (p != list.rend())
+    while (p != list.end())
     {
+        DBG_LOG("preview #", i, " width=", p->width_, " height=", p->height_);
 	if (p->width_ > PREVIEW_LIMIT || p->height_ > PREVIEW_LIMIT) {
 	    pp = p;
+            DBG_LOG("preview #", i, "  SELECTED");
+            break;
 	}
 	++p;
 	++i;
     }
-    if (pp == list.rend()) {
-	pp = list.rbegin();
+    if (pp == list.end()) {
+	pp = list.begin();
     }
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
