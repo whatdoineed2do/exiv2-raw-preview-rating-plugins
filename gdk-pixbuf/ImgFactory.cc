@@ -1,5 +1,7 @@
 #include "ImgFactory.h"
 
+#include <omp.h>
+
 #include <iostream>
 #include <functional>
 #include <chrono>
@@ -874,7 +876,10 @@ ImgFactory&  ImgFactory::instance()
 ImgFactory::ImgFactory()
     : _argbICC(NKAdobe, sizeof(NKAdobe)),
       _srgbICC(sRGB_IEC61966_2_1, sizeof(sRGB_IEC61966_2_1))
-{ }
+{
+    DBG_LOG("OMP: cpus=", omp_get_num_procs(), " threads=", omp_get_max_threads(), "  setting resource limits to #threads");
+    Magick::ResourceLimits::thread(omp_get_max_threads());
+}
 
 
 ImgFactory::Buf&  ImgFactory::create(FILE* f_, ImgFactory::Buf& buf_, std::string& mimeType_)
