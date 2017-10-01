@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <functional>
+#include <chrono>
 
 #include "Buf.h"
 
@@ -936,7 +937,9 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     }
     if (pp == list.end()) {
 	pp = list.begin();
+        std::advance(pp, --i);
     }
+    DBG_LOG("using preview #", i, " width=", pp->width_, " height=", pp->height_);
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
     mimeType_ = preview.mimeType();
@@ -1149,7 +1152,10 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
             tmp[0] = 'x';
         }
 	DBG_LOG("scaling preview=", i, " to ", tmp);
+            const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
 	magick.resize(Magick::Geometry(tmp));
+            const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
+            DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
 
 	std::ostringstream  exif;
 	for (int i=0; i<sizeof(etags)/sizeof(Exiv2::ExifKey); i++) {
