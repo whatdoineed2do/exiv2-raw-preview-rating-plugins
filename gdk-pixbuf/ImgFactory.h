@@ -84,6 +84,7 @@ class ImgFactory
     static ImgFactory&  instance();
 
     ImgFactory();
+    ~ImgFactory();
 
     ImgFactory(ImgFactory&) = delete;
     ImgFactory& operator=(ImgFactory&) = delete;

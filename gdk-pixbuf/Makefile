@@ -7,7 +7,7 @@ install:	all
 	cp libexiv2_pixbuf_loader.so /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/
 	gdk-pixbuf-query-loaders-64 > /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders.cache
 
-CXXFLAGS += -fpermissive -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS) -fPIC  $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags)
+CXXFLAGS += -fopenmp -pthread -fpermissive -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS) -fPIC  $(shell pkg-config gdk-pixbuf-2.0 --cflags) $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags)
 
 
 OBJS = ImgFactory.o DbgHlpr.o exiv2_pixbuf_loader.o
@@ -29,5 +29,5 @@ libexiv2_pixbuf_loader.so:	$(OBJS)
 
 leak.o:	leak.cc ImgFactory.h DbgHlpr.h
 leak:	leak.o ImgFactory.o DbgHlpr.o
-	g++ -ggdb  $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) -o $@
+	g++ -ggdb  -fopenmp -pthread $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) -lpthread -o $@
 
