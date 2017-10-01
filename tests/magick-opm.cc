@@ -16,11 +16,15 @@ using namespace  std;
 void  _magick(const char* file_)
 {
     cout << "using Magick++" << endl;
+    const char*  env;
+    if ( (env = getenv("SET_MAGICK_INIT")) ) {
+	Magick::InitializeMagick("");
+	cout << "  initializing.." << endl;
+    }
 
     Magick::Image  magick(file_ == NULL ? "6000x4000" : file_, "blue");
     magick.filterType(Magick::LanczosFilter);
     magick.quality(70);
-    const char*  env;
     if ( (env = getenv("SET_MAGICK_RESOURCE_LIMIT")) ) {
 	Magick::ResourceLimits::thread(4);
     }
