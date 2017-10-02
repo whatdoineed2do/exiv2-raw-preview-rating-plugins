@@ -882,6 +882,10 @@ ImgFactory::ImgFactory()
     Magick::InitializeMagick("");
 }
 
+ImgFactory::~ImgFactory()
+{
+    Magick::TerminateMagick();
+}
 
 ImgFactory::Buf&  ImgFactory::create(FILE* f_, ImgFactory::Buf& buf_, std::string& mimeType_)
 {
