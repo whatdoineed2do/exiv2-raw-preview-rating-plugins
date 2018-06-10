@@ -6,7 +6,7 @@ AM_LDFLAGS = $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
 
 
 lib_LTLIBRARIES = libexiv2_pixbuf_loader.la
-bin_PROGRAMS = leak
+#bin_PROGRAMS = leak
 
 libexiv2_pixbuf_loader_la_CPPFLAGS = $(AM_CPPFLAGS)
 libexiv2_pixbuf_loader_la_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS)

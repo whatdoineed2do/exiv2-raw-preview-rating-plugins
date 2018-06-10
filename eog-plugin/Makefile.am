@@ -6,11 +6,10 @@ AM_LDFLAGS = $(EXIV_LIBS) $(GDKPIXBUF_LIBS) $(EOG_LIBS) $(PEAS_LIBS)
 
 
 lib_LTLIBRARIES = libexiv2_ratings.la
-bin_PROGRAMS = leak
 
 libexiv2_ratings_la_CPPFLAGS = $(AM_CPPFLAGS)
 libexiv2_ratings_la_CXXFLAGS = $(AM_CXXFLAGS)
-libexiv2_ratings_la_LDFLAGS = $(AM_LDFLAGS) -version-info $(LIBEXIV2_RATINGS_SO_VERSION)
+libexiv2_ratings_la_LDFLAGS = $(AM_LDFLAGS) -avoid-version -module $(no_undefined)
 libexiv2_ratings_la_SOURCES = \
     eog_plugin_exiv2_ratings.cc eog_plugin_exiv2_ratings.h
 
