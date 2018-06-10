@@ -19,9 +19,15 @@ LIBEXIV2_RATINGS_SO_VERSION = 1.3.1
 LIBEXIV2_PIXBUF_LOADER_SO_VERSION = 1.3.1
 
 PKG_CHECK_MODULES(EOG,         [eog             >= 3.24.1])
+PKG_CHECK_VAR([EOG_PLUGINS_DIR],[eog],[pluginsdir])
+
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
 PKG_CHECK_MODULES(EXIV,        [exiv2           >= 0.25])
+
 PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
+PKG_CHECK_VAR([GDKPIXBUF_MODULES_DIR],[gdk-pixbuf-2.0],[gdk_pixbuf_moduledir])
+PKG_CHECK_VAR([GDKPIXBUF_LOADER_CACHE],[gdk-pixbuf-2.0],[gdk_pixbuf_cache_file])
+
 PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
 
 AC_ARG_ENABLE([debug-code],
