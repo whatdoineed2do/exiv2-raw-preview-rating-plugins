@@ -4,7 +4,7 @@ AC_INIT([eog-plugin-exif-rating-raw-viewer], [x.x.x], [https://github.com/whatdo
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
-AC_CONFIG_SRCDIR([gdk-pixbuf])
+AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
 AC_PROG_CC
@@ -40,6 +40,7 @@ fi
 
 AC_OUTPUT([
 Makefile
-eog-plugin/Makefile
-gdk-pixbuf/Makefile
+src/Makefile
+src/eog-plugin/Makefile
+src/gdk-pixbuf/Makefile
 ])
