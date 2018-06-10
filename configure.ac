@@ -15,6 +15,7 @@ PKG_CHECK_MODULES(EOG,         [eog             >= 3.24.1])
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
 PKG_CHECK_MODULES(EXIV,        [exiv2           >= 0.25])
 PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
+PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
 
 AC_ARG_ENABLE([debug-code],
 	[AS_HELP_STRING([--enable-debug],
