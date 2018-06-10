@@ -13,5 +13,5 @@ libexiv2_ratings_la_LDFLAGS = $(AM_LDFLAGS) -avoid-version -module $(no_undefine
 libexiv2_ratings_la_SOURCES = \
     eog_plugin_exiv2_ratings.cc eog_plugin_exiv2_ratings.h
 
-#install:	all
-#	cp libexiv2_ratings.so eog-plugin/exiv2_ratings.plugin /usr/lib64/eog/plugins/
+install:	all
+	cp .libs/libexiv2_ratings.so exiv2_ratings.plugin $(EOG_PLUGINS_DIR)/
