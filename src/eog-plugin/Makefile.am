@@ -14,4 +14,5 @@ libexiv2_ratings_la_SOURCES = \
     eog_plugin_exiv2_ratings.cc eog_plugin_exiv2_ratings.h
 
 install:	all
-	cp .libs/libexiv2_ratings.so exiv2_ratings.plugin $(EOG_PLUGINS_DIR)/
+	$(INSTALL) .libs/libexiv2_ratings.so $(EOG_PLUGINS_DIR)/
+	$(INSTALL) exiv2_ratings.plugin      $(EOG_PLUGINS_DIR)/

@@ -24,7 +24,7 @@ leak_SOURCES = \
     leak.cc ImgFactory.cc DbgHlpr.cc
 
 install:	all
-	install .libs/libexiv2_pixbuf_loader.so $(GDKPIXBUF_MODULES_DIR)/
+	$(INSTALL) .libs/libexiv2_pixbuf_loader.so $(GDKPIXBUF_MODULES_DIR)/
 	gdk-pixbuf-query-loaders-64 > $(GDKPIXBUF_LOADER_CACHE)
 
 #g++ -ggdb  -fopenmp -pthread $(shell pkg-config exiv2 --cflags) $(shell pkg-config Magick++ --cflags) $^ $(shell pkg-config exiv2 --libs) $(shell pkg-config Magick++ --libs) -lpthread -o $@
