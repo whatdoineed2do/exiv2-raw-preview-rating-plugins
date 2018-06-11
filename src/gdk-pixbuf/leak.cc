@@ -257,6 +257,10 @@ int main(int argc, char* const argv[])
 		Exiv2::MemIo  rawio;
 		{
 		    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(filename);
+		    if (orig.get() == NULL) {
+			cout << filename << ": no such file" << endl;
+			continue;
+		    }
 		    orig->readMetadata();
 
 		    Exiv2::PreviewManager loader(*orig);
