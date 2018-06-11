@@ -1,7 +1,6 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
-AM_CPPFLAGS = -fopenmp -pthread -fpermissive -Wconversion-null -Wno-write-strings $(DEBUG_FLAGS) -fPIC
-AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -Wno-deprecated
+AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -Wno-deprecated -fpermissive -Wconversion-null -Wno-write-strings
 AM_LDFLAGS = $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
 
 
@@ -12,9 +11,9 @@ libexiv2_pixbuf_loader_la_CPPFLAGS = $(AM_CPPFLAGS)
 libexiv2_pixbuf_loader_la_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS)
 libexiv2_pixbuf_loader_la_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) -avoid-version -module $(no_undefined)
 libexiv2_pixbuf_loader_la_SOURCES = \
-	DbgHlpr.cc DbgHlpr.h \
-	ImgFactory.cc ImgFactory.h DbgHlpr.h \
-	exiv2_pixbuf_loader.cc ImgFactory.h DbgHlpr.h
+	DbgHlpr.cc \
+	ImgFactory.cc \
+	exiv2_pixbuf_loader.cc 
 
 leak_CPPFLAGS = $(AM_CPPFLAGS)
 leak_CXXFLAGS = $(AM_CXXFLAGS)
