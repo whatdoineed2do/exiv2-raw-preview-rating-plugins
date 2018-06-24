@@ -1,5 +1,6 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
+AM_CPPFLAGS = -DEXIV2_PXBUF_LDR_VERSION=$(shell git describe --long --tags --dirty --always)
 AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -Wno-deprecated -fpermissive -Wconversion-null -Wno-write-strings
 AM_LDFLAGS = $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
 
@@ -11,6 +12,7 @@ libexiv2_pixbuf_loader_la_CPPFLAGS = $(AM_CPPFLAGS)
 libexiv2_pixbuf_loader_la_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS)
 libexiv2_pixbuf_loader_la_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) -avoid-version -module $(no_undefined)
 libexiv2_pixbuf_loader_la_SOURCES = \
+	version.cc \
 	DbgHlpr.cc \
 	ImgFactory.cc \
 	exiv2_pixbuf_loader.cc 
