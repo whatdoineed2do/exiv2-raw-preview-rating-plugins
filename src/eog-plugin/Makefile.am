@@ -19,5 +19,5 @@ exiv2_ratings.plugin:      exiv2_ratings.tmpl
 	sed -e "s/REPLACE_ME_VERSION/$(GIT_CODE_VERSION)/g" exiv2_ratings.tmpl > exiv2_ratings.plugin
 
 install:	all exiv2_ratings.plugin
-	$(INSTALL) .libs/libexiv2_ratings.so $(EOG_PLUGINS_DIR)/
-	$(INSTALL) exiv2_ratings.plugin      $(EOG_PLUGINS_DIR)/
+	$(INSTALL)         .libs/libexiv2_ratings.so $(EOG_PLUGINS_DIR)/
+	$(INSTALL) -m 0644 exiv2_ratings.plugin      $(EOG_PLUGINS_DIR)/
