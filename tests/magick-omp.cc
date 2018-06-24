@@ -17,10 +17,17 @@ void  _magick(const char* file_)
 {
     cout << "using Magick++" << endl;
     const char*  env;
-    if ( (env = getenv("SET_MAGICK_INIT")) ) {
 	Magick::InitializeMagick("");
 	cout << "  initializing.." << endl;
-    }
+
+    cout << "Magick resources:"
+	 << "  area=" << Magick::ResourceLimits::area() 
+	 << "  disk=" << Magick::ResourceLimits::disk()
+	 << "  map=" << Magick::ResourceLimits::map()
+	 << "  memory=" << Magick::ResourceLimits::memory()
+	 << "  threads=" << Magick::ResourceLimits::thread() << endl;
+
+
 
     Magick::Image  magick(file_ == NULL ? "6000x4000" : file_, "blue");
     magick.filterType(Magick::LanczosFilter);
@@ -28,10 +35,24 @@ void  _magick(const char* file_)
     if ( (env = getenv("SET_MAGICK_RESOURCE_LIMIT")) ) {
 	Magick::ResourceLimits::thread(4);
     }
-    const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
-    magick.resize(Magick::Geometry("x4288"));
-    const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
-    cout << "secs=" << elapsed.count() << " " << (env ? "WITH" : "without") << " OMP resource override" << endl;
+    Magick::Geometry  g("x4288");
+    {
+	const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
+	magick.scale(g);
+	const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
+	cout << "scale()  secs=" << elapsed.count() << " " << (env ? "WITH" : "without") << " OMP resource override" << endl;
+    }
+    {
+	const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
+	magick.resize(g);
+	const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
+	cout << "resize() secs=" << elapsed.count() << " " << (env ? "WITH" : "without") << " OMP resource override" << endl;
+    }
+
+    if ( (env = getenv("MAGICK_CLEANUP")) ) {
+	cout << "  cleaning up" << endl;
+	Magick::TerminateMagick();
+    }
 
 }
 #else

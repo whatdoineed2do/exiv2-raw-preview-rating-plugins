@@ -18,6 +18,9 @@ using namespace  std;
 #include <exiv2/exiv2.hpp>
 #include <Magick++.h>
 
+#include "DbgHlpr.h"
+#include "ImgFactory.h"
+
 /*
     g++ -O3 -s -DHAVE_SAMPLE_ICC -I/usr/local/include \
       imgprextr.cc ICCprofiles.c \
@@ -30,65 +33,30 @@ typedef unsigned char  uchar_t;
 typedef unsigned int   uint_t;
 
 
-class _Buf
+
+static void  _dump(const char* argv0_, const char* sfx_, const unsigned char* buf_, ssize_t bufsz_)
 {
-  public:
-    _Buf() : buf(NULL), sz(0), bufsz(0) { }
-    _Buf(size_t sz_) : buf(NULL), sz(0), bufsz(0) { alloc(sz_); }
+    mode_t  msk = umask(0);
+    umask(msk);
+    char  path[PATH_MAX];
+    sprintf(path, "%s-%ld-%s.dat", argv0_, getpid(), sfx_);
 
-    ~_Buf() { free(); }
-
-    uchar_t*  buf;
-    size_t    bufsz;
-    size_t    sz;
-
-    void  alloc(size_t sz_)
-    {
-	if (sz_ > sz) {
-	    delete [] buf;
-	    sz = sz_;
-	    bufsz = sz;
-	    buf = new uchar_t[sz];
-	}
-	memset(buf, 0, sz);
+    int  fd;
+    if ( (fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, msk | 0666)) < 0) {
+	printf("failed to create gen'd file, %s - %s\n", path, strerror(errno));
     }
-
-    void  free()
+    else
     {
-	delete []  buf;
-	buf = NULL;
-	sz = 0;
-	bufsz = 0;
+	write(fd, buf_, bufsz_);
+	close(fd);
     }
-
-    const uchar_t*  copy(uchar_t* buf_, size_t sz_)
-    {
-	alloc(sz_);
-	memcpy(buf, buf_, sz_);
-	bufsz = sz_;
-	return buf;
-    }
-
-    void  clear()
-    {
-	memset(buf, 0, sz);
-    }
-
-  private:
-    _Buf(const _Buf&);
-    void operator=(const _Buf&);
-};
-
-
-  #define DBG_LOG(info, err) 
-
-
+}
 
 static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& dbuf_, Exiv2::BasicIo& bio_, std::string& mimeType_)
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
-    DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+    DBG_LOG("#previews=", list.size());
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due
@@ -166,7 +134,7 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 {
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
-    DBG_LOG(DbgHlpr::concat("#previews=", list.size()).c_str(), NULL);
+    DBG_LOG("#previews=", list.size());
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due
@@ -289,6 +257,10 @@ int main(int argc, char* const argv[])
 		Exiv2::MemIo  rawio;
 		{
 		    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(filename);
+		    if (orig.get() == NULL) {
+			cout << filename << ": no such file" << endl;
+			continue;
+		    }
 		    orig->readMetadata();
 
 		    Exiv2::PreviewManager loader(*orig);
@@ -312,6 +284,7 @@ int main(int argc, char* const argv[])
 	}
 
 
+	if (false)
 	{
 	    try
 	    {
@@ -380,6 +353,41 @@ int main(int argc, char* const argv[])
 	    {
 		cout << filename << ":  unable to extract preview/reset exif - " << e << endl;
 		continue;
+	    }
+	}
+
+	{
+	    try
+	    {
+		FILE*  f_ = fopen(filename, "r");
+		std::string  mimeType;
+		{
+		    Exiv2GdkPxBufLdr::ImgFactory::Buf  prevwbuf;
+		    Exiv2GdkPxBufLdr::ImgFactory::instance().create(f_, prevwbuf, mimeType);
+
+		    _dump(argv0, "FILE", prevwbuf.buf(), prevwbuf.sz());
+		}
+
+		{
+		    Exiv2GdkPxBufLdr::Buf  _tmp;
+		    const long  where = ftell(f_);
+		    fseek(f_, 0, SEEK_END);
+		    const long  sz = ftell(f_);
+		    fseek(f_, 0, SEEK_SET);
+		    _tmp.alloc(sz);
+		    if ( (fread (_tmp.buf(), 1, sz, f_)) != sz) {
+		    }
+		    fseek(f_, where, SEEK_SET);
+
+		    Exiv2GdkPxBufLdr::ImgFactory::Buf  prevwbuf;
+		    Exiv2GdkPxBufLdr::ImgFactory::instance().create(_tmp.buf(), _tmp.bufsz(), prevwbuf, mimeType);
+
+		    _dump(argv0, "BUF", prevwbuf.buf(), prevwbuf.sz());
+		}
+	    }
+	    catch (const std::exception& ex)
+	    {
+		cout << filename << ": failed - " << ex.what() << endl;
 	    }
 	}
     }

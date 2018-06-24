@@ -3,7 +3,7 @@ AC_INIT([eog-plugin-exif-rating-raw-viewer], [1.3.1], [https://github.com/whatdo
 
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_HEADERS([config.h])
 
@@ -49,4 +49,5 @@ Makefile
 src/Makefile
 src/eog-plugin/Makefile
 src/gdk-pixbuf/Makefile
+tests/Makefile
 ])

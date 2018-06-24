@@ -43,6 +43,7 @@
 
 
 #include "ImgFactory.h"
+#include "version.h"
 
 
 extern "C" {
@@ -53,6 +54,42 @@ G_MODULE_EXPORT void fill_info (GdkPixbufFormat *info);
 
 namespace Exiv2GdkPxBufLdr
 {
+class Info 
+{
+  public:
+    Info(const Info&)  = delete;
+    Info(const Info&&) = delete;
+    Info& operator=(const Info&)  = delete;
+    Info& operator=(const Info&&) = delete;
+
+
+    static const Info&  instance()
+    {
+        if (_instance == NULL) {
+            _instance = new Info();
+        }
+        return *_instance;
+    }
+
+    const char* const  name;
+    const char* description;
+
+
+  private:
+    Info() : name("exiv2 RAW preview loader")
+    {
+        _description = "RAW preview image loader (via exiv2) ";
+        _description += Exiv2GdkPxBufLdr::version();
+
+        description = _description.c_str();
+    }
+
+    std::string  _description;
+    static Info*  _instance;
+};
+Info*  Info::_instance = NULL;
+
+
 struct PixbufLdrBuf
 {
     PixbufLdrBuf() : pixbuf(NULL), loader(NULL) { }
@@ -269,9 +306,9 @@ void fill_info (GdkPixbufFormat *info)
         NULL
     };
         
-    info->name        = (char*)"exiv2 RAW preview loader";
+    info->name        = (char*)Exiv2GdkPxBufLdr::Info::instance().name;
     info->signature   = signature;
-    info->description = (char*)"RAW preview image loader (via exiv2)";
+    info->description = (char*)Exiv2GdkPxBufLdr::Info::instance().description;
     info->mime_types  = (gchar**)mime_types;
     info->extensions  = (gchar**)extensions;
     info->flags       = GDK_PIXBUF_FORMAT_THREADSAFE;
