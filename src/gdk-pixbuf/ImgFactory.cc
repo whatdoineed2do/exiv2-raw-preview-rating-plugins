@@ -30,8 +30,12 @@ class Env
     }
 
     Env() 
-	: _previewScaleLimit(4288),
-	  _convertSRGB(true),
+	: _previewScaleLimit(1600),
+         /* The D800 has 4x embedded imgs (160, 530, 1632, * full 7360) - no 
+          * point picking the largest one and scaling so we should deflt to 
+          * something sensible
+          */
+	  _convertSRGB(false),
           _rotate(true)
     {
         const char*  ev;
@@ -925,7 +929,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
      * largest preview but try to avoid getting somethign too large due
      * a bug in cairo-xlib-surface-shm.c:619 mem pool exhausting bug
      *
-     * if the prev img is larger than D300 megapxls (3840pxls on longest
+     * if the prev img is larger than PREVIEW_LIMIT megapxls (on longest
      * edge) then try to either get another preview image or to scale it 
      * using Magick++
      */
