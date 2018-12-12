@@ -21,15 +21,15 @@ int main(int argc, char* const argv[])
     int  ret = 0;
     try
     {
+	ostringstream  os;
+	os << "text\nwith\nnewline breaks";
+
 	Magick::Image  magick(argc == 2 ? argv[1] : "600x400", "blue");
 
 	Magick::Image  info(Magick::Geometry(magick.columns(), magick.rows()), "grey");
 	info.borderColor("grey");
-	info.fontPointsize(18);
-	ostringstream  os;
-	os << "text\nwith\nnewline breaks";
-	info.annotate(os.str(), Magick::Geometry("+10+10"), MagickCore::NorthEastGravity);
-	//info.annotate("hello world\nthis is some text", Magick::Geometry("+10+10"), MagickCore::SouthWestGravity);
+	info.fontPointsize(28);
+	info.annotate(os.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
 	info.trim();
 	info.border();
         info.opacity(65535/3.0);
@@ -46,7 +46,7 @@ int main(int argc, char* const argv[])
 
 	magick.composite(info,
 			    Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
-			    MagickCore::DissolveCompositeOp);
+			    Magick::DissolveCompositeOp);
 
 	magick.write("magick-label-composite.jpg");
     }

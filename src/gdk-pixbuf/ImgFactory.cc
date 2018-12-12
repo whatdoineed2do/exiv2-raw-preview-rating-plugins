@@ -1205,7 +1205,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	Magick::Image  info(Magick::Geometry(magick.columns(), magick.rows()), "grey");
         info.borderColor("grey");
         info.fontPointsize(18);
-	info.annotate(exif.str(), Magick::Geometry("+10+10"), MagickCore::WestGravity);
+	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
         info.trim();
         info.border();
         info.opacity(65535/3.0);
@@ -1219,7 +1219,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
 	magick.composite(info,
 		         Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
-			 MagickCore::DissolveCompositeOp);
+			 Magick::DissolveCompositeOp);
     }
 
     if (magick.isValid())  imgbuf_.finalize(magick);
