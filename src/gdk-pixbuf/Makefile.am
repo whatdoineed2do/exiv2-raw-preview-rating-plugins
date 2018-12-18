@@ -1,7 +1,7 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
 AM_CPPFLAGS = -DEXIV2_PXBUF_LDR_VERSION=$(shell git describe --long --tags --dirty --always)
-AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -Wno-deprecated -fpermissive -Wconversion-null -Wno-write-strings
+AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS)
 AM_LDFLAGS = $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
 
 

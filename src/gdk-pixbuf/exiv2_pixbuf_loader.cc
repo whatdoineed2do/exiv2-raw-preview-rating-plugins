@@ -285,10 +285,30 @@ void fill_vtable (GdkPixbufModule *module)
 void fill_info (GdkPixbufFormat *info)
 {
     static GdkPixbufModulePattern signature[] = {
-        { "MM \x2a", "  z ", 80 }, /* TIFF */
-        { "II\x2a \x10   CR\x02 ", "   z zzz   z", 100 }, /* CR2 */
-        { "II\x2a ", "   z", 80 }, /* TIFF */
-        { "II\x1a   HEAPCCDR", "   zzz        ", 100 }, /* CRW */
+        { /* TIFF */
+            (char*)"MM \x2a",
+            (char*)"  z ",
+            80
+        },
+
+        { /* CR2 */
+            (char*)"II\x2a \x10   CR\x02 ",
+            (char*)"   z zzz   z",
+            100
+        },
+
+        { /* TIFF */
+            (char*)"II\x2a ",
+            (char*)"   z",
+            80
+        },
+
+        { /* CRW */
+            (char*)"II\x1a   HEAPCCDR",
+            (char*)"   zzz        ",
+            100
+        },
+
         { NULL, NULL, 0 }
     };
         

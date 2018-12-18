@@ -67,10 +67,9 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (EogExiv2RatingPlugin,
                                 G_IMPLEMENT_INTERFACE_DYNAMIC (EOG_TYPE_WINDOW_ACTIVATABLE,
                                                                eog_window_activatable_iface_init))
 
-using namespace  std;
 
 static
-ostream&  operator<<(ostream& os_, const Exiv2::XmpData& data_) 
+std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_) 
 {
     for (Exiv2::XmpData::const_iterator md = data_.begin();
          md != data_.end(); ++md) 
@@ -95,27 +94,28 @@ ostream&  operator<<(ostream& os_, const Exiv2::XmpData& data_)
 class _ExifProxy
 {
   public:
-    friend ostream&  operator<<(ostream&, const _ExifProxy&);
+    friend std::ostream&  operator<<(std::ostream&, const _ExifProxy&);
 
     struct HistoryEvnt {
-        HistoryEvnt(const string& f_, const Exiv2::ExifData& exif_, bool rated_)
+        HistoryEvnt(const std::string& f_, const Exiv2::ExifData& exif_, bool rated_)
             : f(f_), exif(exif_), rated(rated_)
         { }
 
-        HistoryEvnt(const string& f_, const Exiv2::ExifData* exif_ = NULL, bool rated_=false)
+        HistoryEvnt(const std::string& f_, const Exiv2::ExifData* exif_ = NULL, bool rated_=false)
             : f(f_), exif(exif_ == NULL ? Exiv2::ExifData() : *exif_), rated(rated_)
         { }
 
-        const string           f;
+        const std::string      f;
         const Exiv2::ExifData  exif;
         const bool             rated;
     };
 
-    typedef list<HistoryEvnt>  History;
+    typedef std::list<HistoryEvnt>  History;
 
 
     _ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
-    { }
+    {
+    }
 
     _ExifProxy&  ref(EogThumbView& ev_)
     {
@@ -167,7 +167,7 @@ class _ExifProxy
             }
         }
         catch(Exiv2::AnyError & e) {
-            cerr << fpath << ": failed to set XMP rating - " << e << endl;
+            std::cerr << fpath << ": failed to set XMP rating - " << e << std::endl;
         }
         g_free(fpath);
         
@@ -186,7 +186,7 @@ class _ExifProxy
 
     const char*  rating()
     {
-        static const string  DEFLT_RATING = "XMP Rating: -----";
+        static const std::string  DEFLT_RATING = "XMP Rating: -----";
         _rating = DEFLT_RATING;
 
         if (rated())
@@ -270,15 +270,15 @@ class _ExifProxy
                 _history.push_back(_ExifProxy::HistoryEvnt(_file, _img->exifData(), r));
             }
         }
-        catch (const exception& ex)
+        catch (const std::exception& ex)
         {
-            cerr << _file << ": failed to update XMP rating - " << ex.what() << endl;
+            std::cerr << _file << ": failed to update XMP rating - " << ex.what() << std::endl;
         }
         return flipped;
     }
 
 
-    const string&  file() const
+    const std::string&  file() const
     { return _file; }
 
     const _ExifProxy::History&  history() const
@@ -289,7 +289,7 @@ class _ExifProxy
     _ExifProxy(const _ExifProxy&);
     void operator=(const _ExifProxy&);
 
-    static const string               _XMPKEY;
+    static const std::string          _XMPKEY;
     static const Exiv2::XmpTextValue  _XMPVAL;
 
 
@@ -299,9 +299,8 @@ class _ExifProxy
     Exiv2::XmpData*  _xmp;
     Exiv2::XmpData::iterator  _xmpkpos;
 
-    string  _file;
-    string  _rating;
-
+    std::string  _file;
+    std::string  _rating;
 
     void  _clear()
     {
@@ -315,11 +314,11 @@ class _ExifProxy
     _ExifProxy::History  _history;
 };
 
-const string               _ExifProxy::_XMPKEY = "Xmp.xmp.Rating";
+const std::string          _ExifProxy::_XMPKEY = "Xmp.xmp.Rating";
 const Exiv2::XmpTextValue  _ExifProxy::_XMPVAL = Exiv2::XmpTextValue("5");
 
 
-ostream&  operator<<(ostream& os_, const _ExifProxy& obj_)
+std::ostream&  operator<<(std::ostream& os_, const _ExifProxy& obj_)
 {
     os_ << obj_._file;
     if (obj_._xmp == NULL) {
@@ -328,7 +327,7 @@ ostream&  operator<<(ostream& os_, const _ExifProxy& obj_)
     return os_ << " [ " << *obj_._xmp << " ]";
 }
 
-ostream&  operator<<(ostream& os_, const _ExifProxy::HistoryEvnt& obj_)
+std::ostream&  operator<<(std::ostream& os_, const _ExifProxy::HistoryEvnt& obj_)
 {
     struct _ETag {
         const Exiv2::ExifKey  tag;
@@ -459,7 +458,7 @@ eog_exiv2_ratings_plugin_dispose (GObject *object)
                 const _ExifProxy::History&  h = plugin->exifproxy->history();
                 for ( _ExifProxy::History::const_iterator i=h.begin(); i!=h.end(); ++i)
                 {
-                    cout << *i << endl;
+                    std::cout << *i << std::endl;
                 }
             }
             delete plugin->exifproxy;
@@ -485,7 +484,7 @@ eog_exiv2_ratings_plugin_update_action_state (EogExiv2RatingPlugin *plugin, EogT
         if (enable) {
             //plugin->exifproxy->ref(*plugin->window);  <-- this is the prev file before the change
             plugin->exifproxy->ref(*thumbview);
-            //cout << *plugin->exifproxy << endl; 
+            //std::cout << *plugin->exifproxy << std::endl; 
             _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                                 NULL,
                                 plugin->exifproxy->valid() ? 
@@ -620,7 +619,7 @@ eog_exiv2_ratings_plugin_deactivate (EogWindowActivatable *activatable)
     /* Disconnect selection-changed handler as the thumbview would
      * otherwise still cause callbacks during its own disposal */
     g_signal_handlers_disconnect_by_func (eog_window_get_thumb_view (plugin->window),
-                                          _selection_changed_cb, plugin);
+                                          (gpointer)_selection_changed_cb, plugin);
 
     /* Finally remove action */
     g_action_map_remove_action (G_ACTION_MAP (plugin->window),
