@@ -28,6 +28,7 @@ extern "C" {
 #include <iomanip>
 #include <cassert>
 #include <cmath>
+#include <mutex>
 
 #include <exiv2/exiv2.hpp>
 
@@ -112,9 +113,41 @@ class _ExifProxy
 
     typedef std::list<HistoryEvnt>  History;
 
+#ifdef EOG_PLUGIN_XMP_INIT_LOCK
+    class _XmpLock
+    {
+      public:
+        _XmpLock()  = default;
+        ~_XmpLock() = default;
+
+        _XmpLock(const _XmpLock&)  = delete;
+        _XmpLock(const _XmpLock&&) = delete;
+
+
+        static void  lockUnlock(void* obj_, bool lock_)
+        {
+            _XmpLock*  obj;
+            if ( (obj = reinterpret_cast<_XmpLock*>(obj_)) ) {
+                  if (lock_) {
+                      obj->_m.lock();
+                  }
+                  else {
+                      obj->_m.unlock();
+                  }
+            }
+        }
+
+      private:
+        std::mutex  _m;
+    };
+#endif
 
     _ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
     {
+#ifdef EOG_PLUGIN_XMP_INIT_LOCK
+        // not thread safe!!!!  need to initialize XMPtoolkit
+        Exiv2::XmpParser::initialize(_XmpLock::lockUnlock, &_xmplock);
+#endif
     }
 
     _ExifProxy&  ref(EogThumbView& ev_)
@@ -301,6 +334,10 @@ class _ExifProxy
 
     std::string  _file;
     std::string  _rating;
+
+#ifdef EOG_PLUGIN_XMP_INIT_LOCK
+    _XmpLock  _xmplock;
+#endif
 
     void  _clear()
     {
