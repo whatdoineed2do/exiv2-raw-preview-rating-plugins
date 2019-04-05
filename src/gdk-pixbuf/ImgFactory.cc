@@ -1208,8 +1208,13 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
         info.trim();
         info.border();
+#if MagickLibInterface == 5  // IM 6.x
         info.opacity(65535/3.0);
-	info.transparent("grey");
+        info.transparent("grey");
+#elif MagickLibInterface == 6  // IM 7
+        info.opaque(Magick::Color("none"), Magick::Color("grey"));
+        info.backgroundColor(Magick::Color("grey"));
+#endif
 
 	if (info.columns() > magick.columns()-10) {
 	    std::ostringstream  os;
