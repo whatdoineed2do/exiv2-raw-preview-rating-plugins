@@ -1,9 +1,0 @@
-[Plugin]
-Module=exiv2_ratings
-IAge=3
-Name=exiv2 XMP Rating
-Icon=view-refresh
-Description=Add/Remove EXIF XMP Rating  v1.3.2-0-g68d5db9-dirty
-Authors=Ray Fung
-Copyright=Copyright © 2018 Ray Fung
-Website=https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer
