@@ -58,6 +58,12 @@ class Env
 	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
 	}
         std::cout << ev << "=" << _rotate << std::endl;
+
+    	ev = "EXIV2_PIXBUF_LOADER_FONT";
+	if ( (tmp = getenv(ev)) ) {
+	    _font = tmp;
+	}
+        std::cout << ev << "=" << _font << std::endl;
     }
 
     unsigned short  previewScaleLimit() const
@@ -68,6 +74,9 @@ class Env
 
     bool  rotate() const
     { return _rotate; }
+
+    const std::string&  font() const
+    { return _font; }
     
   private:
     static std::unique_ptr<Env>  _instance;
@@ -76,6 +85,7 @@ class Env
     unsigned short  _previewScaleLimit;
     bool   _convertSRGB;
     bool   _rotate;
+    std::string  _font;
 };
 std::unique_ptr<Env>  Env::_instance = NULL;
 std::once_flag  Env::_once;
@@ -1204,6 +1214,9 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
 	Magick::Image  info(Magick::Geometry(magick.columns(), magick.rows()), "grey");
         info.borderColor("grey");
+	if (env.font().length() > 0) {
+	    info.font(env.font());
+	}
         info.fontPointsize(18);
 	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
         info.trim();
