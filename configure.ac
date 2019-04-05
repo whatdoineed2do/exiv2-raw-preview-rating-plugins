@@ -1,5 +1,5 @@
 AC_PREREQ(2.64)
-AC_INIT([eog-plugin-exif-rating-raw-viewer], [1.3.2], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
+AC_INIT([eog-plugin-exif-rating-raw-viewer], [m4_esyscmd([git describe --tags --dirty --always | tr -d '\n'])], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
 
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])

@@ -36,14 +36,7 @@ extern "C" {
 namespace {
 const char*  _version()
 {
-#ifdef EOG_EXIV2_RATING_PLUGIN_VERSION
-#define EOG_EXIV2_RATING_PLUGIN_STRM(x)  #x
-#define EOG_EXIV2_RATING_PLUGIN_STR(x)   EOG_EXIV2_RATING_PLUGIN_STRM(x)
-#define EOG_EXIV2_RATING_PLUGIN_VERSION_STR  EOG_EXIV2_RATING_PLUGIN_STR(EOG_EXIV2_RATING_PLUGIN_VERSION)
-#else
-#define EOG_EXIV2_RATING_PLUGIN_VERSION_STR  "v0.0.0-unknown"
-#endif
-    return EOG_EXIV2_RATING_PLUGIN_VERSION_STR;
+    return VERSION;
 }
 
 const char* eog_exiv2_rating_version = _version();
