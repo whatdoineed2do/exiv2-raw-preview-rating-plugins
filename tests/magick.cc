@@ -15,7 +15,6 @@ using namespace  std;
 #include <Magick++.h>
 
 
-
 int main(int argc, char* const argv[])
 {
     int  ret = 0;
@@ -28,12 +27,24 @@ int main(int argc, char* const argv[])
 
 	Magick::Image  info(Magick::Geometry(magick.columns(), magick.rows()), "grey");
 	info.borderColor("grey");
+	if (argc == 3) {
+	    // ttf - needs full path: "@/usr/share/fonts/google-noto/NotoSans-Regular.ttf"
+	    // xserver font: NimbusSans-Regular
+	    // see fc-list
+	    info.font(argv[2]);
+	}
 	info.fontPointsize(28);
 	info.annotate(os.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
 	info.trim();
 	info.border();
+#if MagickLibInterface == 5  // IM 6.x
         info.opacity(65535/3.0);
         info.transparent("grey");
+#elif MagickLibInterface == 6  // IM 7
+	// TODO - no transparency
+        info.opaque(Magick::Color("none"), Magick::Color("grey"));
+	info.backgroundColor(Magick::Color("grey"));
+#endif
 
 	cout << "composite size=" << info.columns() << "x" << info.rows() << endl;
 
