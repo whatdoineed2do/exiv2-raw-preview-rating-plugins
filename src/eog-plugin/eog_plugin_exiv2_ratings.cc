@@ -2,24 +2,12 @@
 #include <unistd.h>
 #include <utime.h>
 
-extern "C" {
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
 #include "eog_plugin_exiv2_ratings.h"
-
-#include <gmodule.h>
-
-#include <libpeas/peas.h>
-
-#include <eog/eog-application.h>
-#include <eog/eog-debug.h>
-#include <eog/eog-thumb-view.h>
-#include <eog/eog-window.h>
-#include <eog/eog-window-activatable.h>
-}
 
 
 #include <string>

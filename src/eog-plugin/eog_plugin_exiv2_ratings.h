@@ -1,14 +1,18 @@
 #ifndef __EOG_EXIV_XMP_RATING_PLUGIN_H__
 #define __EOG_EXIV_XMP_RATING_PLUGIN_H__
 
-extern "C" {
 
 #include <glib.h>
 #include <glib-object.h>
+#include <gmodule.h>
+#include <libpeas/peas.h>
 #include <libpeas/peas-extension-base.h>
 #include <libpeas/peas-object-module.h>
-
+#include <eog/eog-application.h>
+#include <eog/eog-debug.h>
+#include <eog/eog-thumb-view.h>
 #include <eog/eog-window.h>
+#include <eog/eog-window-activatable.h>
 
 G_BEGIN_DECLS
 
@@ -53,5 +57,4 @@ G_MODULE_EXPORT void peas_register_types (PeasObjectModule *module);
 
 G_END_DECLS
 
-}
 #endif
