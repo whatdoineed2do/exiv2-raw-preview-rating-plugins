@@ -56,17 +56,7 @@ std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_)
     for (Exiv2::XmpData::const_iterator md = data_.begin();
          md != data_.end(); ++md) 
     {
-#if 0
-        os_ << std::setfill(' ') << std::left << std::setw(44)
-            << md->key() << " "
-            << std::setw(9) << std::setfill(' ') << std::left
-            << md->typeName() << " " << std::dec << std::setw(3)
-            << std::setfill(' ') << std::right
-            << md->count() << "  " << std::dec << md->
-            value() << std::endl;
-#else
         os_ << "{ " << md->key() << " " << md->typeName() << " " << md->count() << " " << md->value() << " }";
-#endif
     }
 
     return os_;
@@ -578,22 +568,6 @@ eog_exiv2_ratings_plugin_activate (EogWindowActivatable *activatable)
                       plugin);
     eog_exiv2_ratings_plugin_update_action_state (plugin, EOG_THUMB_VIEW (eog_window_get_thumb_view (plugin->window)));
 
-#if 0
-    /* Append entry to the window's gear menu */
-    menu = g_menu_new ();
-    g_menu_append (menu, "Add Exif Rating",
-                   "win." EOG_EXIV_XMP_RATING_PLUGIN_ACTION);
-
-    item = g_menu_item_new_section (NULL, G_MENU_MODEL (menu));
-    g_menu_item_set_attribute (item, "id",
-                               "s", EOG_EXIV_XMP_RATING_PLUGIN_MENU_ID);
-    g_menu_item_set_attribute (item, G_MENU_ATTRIBUTE_ICON,
-                               "s", "view-refresh-symbolic");
-    g_menu_append_item (model, item);
-    g_object_unref (item);
-
-    g_object_unref (menu);
-#endif
 
     /* Define accelerator keys */
     gtk_application_set_accels_for_action (GTK_APPLICATION (EOG_APP),
@@ -612,29 +586,6 @@ eog_exiv2_ratings_plugin_deactivate (EogWindowActivatable *activatable)
 
 #ifdef EOG_PLUGIN_DEBUG
     eog_debug (DEBUG_PLUGINS);
-#endif
-
-#if 0
-    menu = eog_window_get_gear_menu_section (plugin->window,
-                                             "plugins-section");
-
-    g_return_if_fail (G_IS_MENU (menu));
-
-    /* Remove menu entry */
-    model = G_MENU_MODEL (menu);
-    for (i = 0; i < g_menu_model_get_n_items (model); i++) {
-            gchar *id;
-            if (g_menu_model_get_item_attribute (model, i, "id", "s", &id)) {
-                    const gboolean found =
-                            (g_strcmp0 (id, EOG_EXIV_XMP_RATING_PLUGIN_MENU_ID) == 0);
-                    g_free (id);
-
-                    if (found) {
-                            g_menu_remove (menu, i);
-                            break;
-                    }
-            }
-    }
 #endif
 
     /* Unset accelerator */
