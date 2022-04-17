@@ -456,7 +456,9 @@ eog_exiv2_ratings_plugin_get_property (GObject    *object,
 static void
 eog_exiv2_ratings_plugin_init (EogExiv2RatingPlugin *plugin)
 {
+#ifdef EOG_PLUGIN_DEBUG 
 	eog_debug_message (DEBUG_PLUGINS, "EogExiv2RatingPlugin initializing");
+#endif
         plugin->exifproxy = new _ExifProxy();
 }
 
@@ -465,7 +467,9 @@ eog_exiv2_ratings_plugin_dispose (GObject *object)
 {
 	EogExiv2RatingPlugin *plugin = EOG_EXIV_XMP_RATING_PLUGIN (object);
 
+#ifdef EOG_PLUGIN_DEBUG 
 	eog_debug_message (DEBUG_PLUGINS, "EogExiv2RatingPlugin disposing");
+#endif
 
 	if (plugin->window != NULL) 
         {
@@ -547,7 +551,9 @@ eog_exiv2_ratings_plugin_activate (EogWindowActivatable *activatable)
     gtk_box_pack_end (GTK_BOX(statusbar), plugin->statusbar_exif, FALSE, FALSE, 0);
 
 
+#ifdef EOG_PLUGIN_DEBUG 
     eog_debug (DEBUG_PLUGINS);
+#endif
 
     model= eog_window_get_gear_menu_section (plugin->window,
                                              "plugins-section");
@@ -604,7 +610,9 @@ eog_exiv2_ratings_plugin_deactivate (EogWindowActivatable *activatable)
     GMenuModel *model;
     gint i;
 
+#ifdef EOG_PLUGIN_DEBUG
     eog_debug (DEBUG_PLUGINS);
+#endif
 
 #if 0
     menu = eog_window_get_gear_menu_section (plugin->window,
