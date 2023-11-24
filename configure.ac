@@ -1,5 +1,5 @@
 AC_PREREQ(2.64)
-AC_INIT([eog-plugin-exif-rating-raw-viewer], [v1.3.3.1], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
+AC_INIT([eog-plugin-exif-rating-raw-viewer], [v1.3.4], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
 
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])
@@ -15,8 +15,8 @@ AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 PKG_PROG_PKG_CONFIG
 
-LIBEXIV2_RATINGS_SO_VERSION=1.3.3.1
-LIBEXIV2_PIXBUF_LOADER_SO_VERSION=1.3.3.1
+LIBEXIV2_RATINGS_SO_VERSION=1.3.4
+LIBEXIV2_PIXBUF_LOADER_SO_VERSION=1.3.4
 
 AC_ARG_ENABLE(eog,
         AS_HELP_STRING([--disable-eog],[do not build EOG exif rating plugin]),
@@ -59,7 +59,6 @@ fi
 
 
 if test "x$use_eog" = "xno" ; then
-    sed -i "s#src/eog-plugin##" Makefile.am
     sed -i "s/eog-plugin//" src/Makefile.am
 fi
 
