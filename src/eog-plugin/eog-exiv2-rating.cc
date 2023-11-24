@@ -7,7 +7,7 @@
 #include <config.h>
 #endif
 
-#include "eog_plugin_exiv2_ratings.h"
+#include "eog-exiv2-rating.h"
 
 
 #include <string>
