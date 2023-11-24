@@ -4,6 +4,9 @@
 
 #include "eom-exiv2-rating.h"
 
+#include <iostream>
+#include <ExifProxy.h>
+
 extern "C" {
 
 static void eom_window_activatable_iface_init (EomWindowActivatableInterface *iface);
@@ -24,9 +27,10 @@ enum {
 extern "C" {
 static void
 exiv2rate_cb(GtkAction *action,
-           EomWindow *window)
+           EomExiv2RatingPlugin *plugin)
 {
-	//eom_window_reload_image (window);
+    eom_debug_message (DEBUG_PLUGINS, "rating file");
+    g_print("Rated %s %s\n", plugin->exifproxy->file().c_str(), plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "XMP Rating: -/-");
 }
 }
 
@@ -91,6 +95,7 @@ static void
 eom_exiv2_rating_plugin_init (EomExiv2RatingPlugin *plugin)
 {
     eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin initializing");
+    plugin->exifproxy = new ExifProxy();
 }
 
 static void
@@ -103,6 +108,16 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
     if (plugin->window != NULL) {
 	g_object_unref (plugin->window);
 	plugin->window = NULL;
+
+	if (plugin->exifproxy) {
+	    const ExifProxy::History&  h = plugin->exifproxy->history();
+	    for ( ExifProxy::History::const_iterator i=h.begin(); i!=h.end(); ++i)
+	    {
+		std::cout << *i << std::endl;
+	    }
+	}
+	delete plugin->exifproxy;
+	plugin->exifproxy = NULL;
     }
 
     G_OBJECT_CLASS (eom_exiv2_rating_plugin_parent_class)->dispose (object);
@@ -125,7 +140,7 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
     plugin->ui_action_group = gtk_action_group_new ("EomExiv2RatingPluginActions");
 
     gtk_action_group_add_actions (plugin->ui_action_group, action_entries,
-	    G_N_ELEMENTS (action_entries), plugin->window);
+	    G_N_ELEMENTS (action_entries), plugin);
     G_GNUC_END_IGNORE_DEPRECATIONS;
 
     plugin->signal_id = g_signal_connect_after (G_OBJECT (thumbview), "selection_changed",
@@ -222,8 +237,12 @@ selection_changed_cb (EomThumbView         *view,
 
     GFile* file = eom_image_get_file(image);
     char* path = g_file_get_path(file);
+
+    plugin->exifproxy->ref(path);
+
     g_object_unref(file);
     eom_debug_message (DEBUG_PLUGINS, "selection changed to %s", path);
+
     g_free(path);
 
 #if 0

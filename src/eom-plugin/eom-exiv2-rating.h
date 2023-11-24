@@ -17,6 +17,8 @@ extern "C" {
 #include <eom/eom-thumb-view.h>
 }
 
+class ExifProxy;
+
 G_BEGIN_DECLS
 
 
@@ -51,6 +53,8 @@ struct _EomExiv2RatingPlugin {
 	GtkActionGroup *ui_action_group;
 	guint ui_id;
 	gulong signal_id;
+
+	ExifProxy*  exifproxy;
 };
 
 /*
