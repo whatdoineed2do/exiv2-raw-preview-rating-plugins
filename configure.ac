@@ -88,9 +88,15 @@ if test "x$use_eom" = "xno" ; then
     sed -i "s/eom-plugin//" src/Makefile.am
 fi
 
+
+if test "x$need_peas" != "xyes" ; then
+    sed -i "s/lib//" src/Makefile.am
+fi
+
 AC_OUTPUT([
     Makefile
     src/Makefile
+    src/lib/Makefile
     src/eog-plugin/Makefile
     src/eom-plugin/Makefile
     src/gdk-pixbuf/Makefile
