@@ -1,0 +1,50 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -yq \
+        build-essential autotools-dev autoconf libtool \
+        libmagick++-6.q16-dev \
+        libexiv2-dev \
+        libgtk2.0-dev libpeas-dev eog-dev eom-dev
+
+    - name: Build all
+      run: |
+        autoreconf --install
+        autoconf
+        ./configure
+        make
+
+    - name: Build except EoM
+      run: |
+        autoreconf --install
+        autoconf
+        ./configure --disable-eom
+        make
+
+    - name: Build except EoG
+      run: |
+        autoreconf --install
+        autoconf
+        ./configure --disable-eog
+        make
+
+    - name: Build gdk pixbuf only
+      run: |
+        autoreconf --install
+        autoconf
+        ./configure --disable-eom --disable-eog
+        make
+
