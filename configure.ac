@@ -36,6 +36,22 @@ fi
 AM_CONDITIONAL([HAVE_EOG], [test "x$use_eog" = xyes])
 
 
+AC_ARG_ENABLE(eom,
+        AS_HELP_STRING([--disable-eom],[do not build Eye Of Mate exif rating plugin]),
+        [ use_eom="${enableval}" ], [ use_eom=yes ] )
+
+if test "x$use_eom" != xno ; then
+        PKG_CHECK_MODULES(EOM, [eom >= 1.26.0], [ use_eom=yes ], [ use_eom=no ])
+        AH_TEMPLATE([HAVE_EOM], [build Eye Of Mate exif rating plugin])
+        AS_IF([test "x$use_eom" = "xyes"], [
+                AC_DEFINE([HAVE_EOM])
+                AC_SUBST(EOM_CFLAGS)
+                AC_SUBST(EOM_LIBS)
+           ])
+fi
+AM_CONDITIONAL([HAVE_EOM], [test "x$use_eom" = xyes])
+
+
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
 PKG_CHECK_MODULES(EXIV,        [exiv2           >= 0.25])
 
@@ -60,6 +76,10 @@ fi
 
 if test "x$use_eog" = "xno" ; then
     sed -i "s/eog-plugin//" src/Makefile.am
+fi
+
+if test "x$use_eom" = "xno" ; then
+    sed -i "s/eom-plugin//" src/Makefile.am
 fi
 
 AC_OUTPUT([
