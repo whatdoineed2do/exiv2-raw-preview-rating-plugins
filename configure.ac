@@ -30,10 +30,32 @@ if test "x$use_eog" != xno ; then
                 AC_SUBST(EOG_CFLAGS)
                 AC_SUBST(EOG_LIBS)
 		PKG_CHECK_VAR([EOG_PLUGINS_DIR],[eog],[pluginsdir])
-		PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
+		need_peas=yes
            ])
 fi
 AM_CONDITIONAL([HAVE_EOG], [test "x$use_eog" = xyes])
+
+
+AC_ARG_ENABLE(eom,
+        AS_HELP_STRING([--disable-eom],[do not build Eye Of Mate exif rating plugin]),
+        [ use_eom="${enableval}" ], [ use_eom=yes ] )
+
+if test "x$use_eom" != xno ; then
+        PKG_CHECK_MODULES(EOM, [eom >= 1.26.0], [ use_eom=yes ], [ use_eom=no ])
+        AH_TEMPLATE([HAVE_EOM], [build Eye Of Mate exif rating plugin])
+        AS_IF([test "x$use_eom" = "xyes"], [
+                AC_DEFINE([HAVE_EOM])
+                AC_SUBST(EOM_CFLAGS)
+                AC_SUBST(EOM_LIBS)
+		PKG_CHECK_VAR([EOM_PLUGINS_DIR],[eom],[pluginsdir])
+		need_peas=yes
+           ])
+fi
+AM_CONDITIONAL([HAVE_EOM], [test "x$use_eom" = xyes])
+
+if test "x$need_peas" != xno ; then
+PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
+fi
 
 
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
@@ -62,10 +84,21 @@ if test "x$use_eog" = "xno" ; then
     sed -i "s/eog-plugin//" src/Makefile.am
 fi
 
+if test "x$use_eom" = "xno" ; then
+    sed -i "s/eom-plugin//" src/Makefile.am
+fi
+
+
+if test "x$need_peas" != "xyes" ; then
+    sed -i "s/lib//" src/Makefile.am
+fi
+
 AC_OUTPUT([
     Makefile
     src/Makefile
+    src/lib/Makefile
     src/eog-plugin/Makefile
+    src/eom-plugin/Makefile
     src/gdk-pixbuf/Makefile
     tests/Makefile
 ])

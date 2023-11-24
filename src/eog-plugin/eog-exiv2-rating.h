@@ -30,7 +30,7 @@ typedef struct _EogExiv2RatingPluginPrivate	EogExiv2RatingPluginPrivate;
 
 typedef struct _EogExiv2RatingPlugin		EogExiv2RatingPlugin;
 
-class _ExifProxy;
+class ExifProxy;
 
 struct _EogExiv2RatingPlugin
 {
@@ -41,7 +41,7 @@ struct _EogExiv2RatingPlugin
     GtkActionGroup *ui_action_group;
     guint ui_id;
 
-    _ExifProxy*  exifproxy;
+    ExifProxy*  exifproxy;
 };
 
 typedef struct _EogExiv2RatingPluginClass	EogExiv2RatingPluginClass;

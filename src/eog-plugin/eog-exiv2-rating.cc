@@ -7,7 +7,7 @@
 #include <config.h>
 #endif
 
-#include "eog_plugin_exiv2_ratings.h"
+#include "eog-exiv2-rating.h"
 
 
 #include <string>
@@ -19,6 +19,8 @@
 #include <mutex>
 
 #include <exiv2/exiv2.hpp>
+
+#include <ExifProxy.h>
 
 
 namespace {
@@ -48,322 +50,6 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (EogExiv2RatingPlugin,
                                 0,
                                 G_IMPLEMENT_INTERFACE_DYNAMIC (EOG_TYPE_WINDOW_ACTIVATABLE,
                                                                eog_window_activatable_iface_init))
-
-
-static
-std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_) 
-{
-    for (Exiv2::XmpData::const_iterator md = data_.begin();
-         md != data_.end(); ++md) 
-    {
-        os_ << "{ " << md->key() << " " << md->typeName() << " " << md->count() << " " << md->value() << " }";
-    }
-
-    return os_;
-}
-
-
-class _ExifProxy
-{
-  public:
-    friend std::ostream&  operator<<(std::ostream&, const _ExifProxy&);
-
-    struct HistoryEvnt {
-        HistoryEvnt(const std::string& f_, const Exiv2::ExifData& exif_, bool rated_)
-            : f(f_), exif(exif_), rated(rated_)
-        { }
-
-        HistoryEvnt(const std::string& f_, const Exiv2::ExifData* exif_ = NULL, bool rated_=false)
-            : f(f_), exif(exif_ == NULL ? Exiv2::ExifData() : *exif_), rated(rated_)
-        { }
-
-        const std::string      f;
-        const Exiv2::ExifData  exif;
-        const bool             rated;
-    };
-
-    typedef std::list<HistoryEvnt>  History;
-
-#ifdef EOG_PLUGIN_XMP_INIT_LOCK
-    class _XmpLock
-    {
-      public:
-        _XmpLock()  = default;
-        ~_XmpLock() = default;
-
-        _XmpLock(const _XmpLock&)  = delete;
-        _XmpLock(const _XmpLock&&) = delete;
-
-
-        static void  lockUnlock(void* obj_, bool lock_)
-        {
-            _XmpLock*  obj;
-            if ( (obj = reinterpret_cast<_XmpLock*>(obj_)) ) {
-                  if (lock_) {
-                      obj->_m.lock();
-                  }
-                  else {
-                      obj->_m.unlock();
-                  }
-            }
-        }
-
-      private:
-        std::mutex  _m;
-    };
-#endif
-
-    _ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
-    {
-#ifdef EOG_PLUGIN_XMP_INIT_LOCK
-        // not thread safe!!!!  need to initialize XMPtoolkit
-        Exiv2::XmpParser::initialize(_XmpLock::lockUnlock, &_xmplock);
-#endif
-    }
-
-    _ExifProxy&  ref(EogThumbView& ev_)
-    {
-        return ref(*eog_thumb_view_get_first_selected_image(&ev_));
-    }
-
-    _ExifProxy&  ref(EogWindow& ew_)
-    {
-        return ref( *eog_window_get_image(&ew_) );
-    }
-
-    _ExifProxy&  ref(EogImage& ei_)
-    {
-        GFile*  f = eog_image_get_file(&ei_ );
-        if ( f == NULL) {
-            _clear();
-            return *this;
-        }
-
-        char* const  fpath = g_file_get_path(f);
-        if (strcmp(fpath, _file.c_str()) == 0) {
-            g_free(fpath);
-            return *this;
-        }
-        struct stat  st;
-        memset(&st, 0, sizeof(st));
-        if (stat(fpath, &st) < 0) {
-            _clear();
-            g_free(fpath);
-            return *this;
-        }
-
-        _clear();
-        _mtime = st.st_mtime;
-
-        try
-        {
-            _img = Exiv2::ImageFactory::open(fpath);
-            _img->readMetadata();
-            //_xmpkpos = NULL;
-
-            _file = fpath;
-
-            Exiv2::XmpData&  xmpData = _img->xmpData();
-            Exiv2::XmpData::iterator  kpos = xmpData.findKey(Exiv2::XmpKey(_ExifProxy::_XMPKEY));
-            if (kpos != xmpData.end()) {
-                _xmp = &xmpData;
-                _xmpkpos = kpos;
-            }
-        }
-        catch(Exiv2::AnyError & e) {
-            std::cerr << fpath << ": failed to set XMP rating - " << e << std::endl;
-        }
-        g_free(fpath);
-        
-        return *this;
-    }
-
-    bool  valid() const
-    {
-        return _img.get() != 0;
-    }
-
-    bool  rated() const
-    {
-        return _xmp == NULL ? false : _xmpkpos != _xmp->end();
-    }
-
-    const char*  rating()
-    {
-        static const std::string  DEFLT_RATING = "XMP Rating: -----";
-        _rating = DEFLT_RATING;
-
-        if (rated())
-        {
-            // spec say -1..5
-            long  N = _xmpkpos->toLong();
-            if (N < 0) {
-            }
-            else
-            {
-                if (N > 5) {
-                    N = 5;
-                }
-                char*  n = ((char*)_rating.c_str())+12;
-                for (int i=0; i<N; i++) {
-                    n[i] = '*';
-                }
-            }
-        }
-        return _rating.c_str();
-    }
-
-    /* mark the image if its not already rated
-     */
-    bool  fliprating()
-    {
-        bool  flipped = false;
-        if (_img.get() == 0) {
-            // something went wrong earlier/no img ... do nothing
-            return flipped;
-        }
-
-        try
-        {
-            bool  r = false;
-            if (_xmp == NULL)
-            {
-                // previously found no XMP data set
-                _xmp = &_img->xmpData();
-
-                (*_xmp)[_ExifProxy::_XMPKEY] = _ExifProxy::_XMPVAL;
-                _xmpkpos = _xmp->findKey(Exiv2::XmpKey(_ExifProxy::_XMPKEY));
-
-                r = true;
-            }
-            else
-            {
-                if (_xmpkpos == _xmp->end()) {
-                    (*_xmp)[_ExifProxy::_XMPKEY] = _ExifProxy::_XMPVAL;
-                    _xmpkpos = _xmp->findKey(Exiv2::XmpKey(_ExifProxy::_XMPKEY));
-
-                    r = true;
-                }
-                else {
-                    _xmp->erase(_xmpkpos);
-                    _xmpkpos = _xmp->end();
-                    r = false;
-                }
-            }
-            _img->writeMetadata();
-
-            flipped = true;
-
-            struct utimbuf  tmput;
-            memset(&tmput, 0, sizeof(tmput));
-            tmput.modtime = _mtime;
-            utime(_file.c_str(), &tmput);
-
-            _ExifProxy::History::iterator  h;
-            for (h=_history.begin(); h!=_history.end(); ++h)
-            {
-                if (h->f == _file) {
-                    break;
-                }
-            }
-            if (h != _history.end()) {
-                _history.erase(h);
-            }
-            else
-            {
-                _history.push_back(_ExifProxy::HistoryEvnt(_file, _img->exifData(), r));
-            }
-        }
-        catch (const std::exception& ex)
-        {
-            std::cerr << _file << ": failed to update XMP rating - " << ex.what() << std::endl;
-        }
-        return flipped;
-    }
-
-
-    const std::string&  file() const
-    { return _file; }
-
-    const _ExifProxy::History&  history() const
-    { return _history; }
-
-
-  private:
-    _ExifProxy(const _ExifProxy&);
-    void operator=(const _ExifProxy&);
-
-    static const std::string          _XMPKEY;
-    static const Exiv2::XmpTextValue  _XMPVAL;
-
-
-    time_t  _mtime;
-
-    Exiv2::Image::AutoPtr  _img;
-    Exiv2::XmpData*  _xmp;
-    Exiv2::XmpData::iterator  _xmpkpos;
-
-    std::string  _file;
-    std::string  _rating;
-
-#ifdef EOG_PLUGIN_XMP_INIT_LOCK
-    _XmpLock  _xmplock;
-#endif
-
-    void  _clear()
-    {
-        _xmp = NULL;
-        _file.clear();
-        _img.reset();
-        _mtime = 0;
-        _rating.clear();
-    }
-
-    _ExifProxy::History  _history;
-};
-
-const std::string          _ExifProxy::_XMPKEY = "Xmp.xmp.Rating";
-const Exiv2::XmpTextValue  _ExifProxy::_XMPVAL = Exiv2::XmpTextValue("5");
-
-
-std::ostream&  operator<<(std::ostream& os_, const _ExifProxy& obj_)
-{
-    os_ << obj_._file;
-    if (obj_._xmp == NULL) {
-        return os_ << " [ <nil> ]";
-    }
-    return os_ << " [ " << *obj_._xmp << " ]";
-}
-
-std::ostream&  operator<<(std::ostream& os_, const _ExifProxy::HistoryEvnt& obj_)
-{
-    struct _ETag {
-        const Exiv2::ExifKey  tag;
-        const char*  prfx;
-
-        _ETag(const Exiv2::ExifKey&  tag_, const char* prfx_) : tag(tag_), prfx(prfx_) { }
-    };
-    static const _ETag etags[] = {
-        _ETag(Exiv2::ExifKey("Exif.Image.Model"), ""),
-        _ETag(Exiv2::ExifKey("Exif.Image.DateTime"), ""),
-        _ETag(Exiv2::ExifKey("Exif.Photo.ExposureTime"), ""),
-        _ETag(Exiv2::ExifKey("Exif.Photo.FNumber"), ""),
-        _ETag(Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings"), "ISO")
-    };
-
-    os_ << obj_.f << ": " << (obj_.rated ? "R" : "U");
-
-    for (int i=0; i<5; ++i) {
-        Exiv2::ExifData::const_iterator  e = obj_.exif.findKey(etags[i].tag);
-        if (e == obj_.exif.end()) {
-            continue;
-        }
-
-        os_ << " " << etags[i].prfx << *e;
-    }
-
-    return os_;
-}
 
 
 static void
@@ -449,7 +135,7 @@ eog_exiv2_ratings_plugin_init (EogExiv2RatingPlugin *plugin)
 #ifdef EOG_PLUGIN_DEBUG 
 	eog_debug_message (DEBUG_PLUGINS, "EogExiv2RatingPlugin initializing");
 #endif
-        plugin->exifproxy = new _ExifProxy();
+        plugin->exifproxy = new ExifProxy();
 }
 
 static void
@@ -467,8 +153,8 @@ eog_exiv2_ratings_plugin_dispose (GObject *object)
             plugin->window = NULL;
 
             if (plugin->exifproxy) {
-                const _ExifProxy::History&  h = plugin->exifproxy->history();
-                for ( _ExifProxy::History::const_iterator i=h.begin(); i!=h.end(); ++i)
+                const ExifProxy::History&  h = plugin->exifproxy->history();
+                for ( ExifProxy::History::const_iterator i=h.begin(); i!=h.end(); ++i)
                 {
                     std::cout << *i << std::endl;
                 }
@@ -492,11 +178,14 @@ eog_exiv2_ratings_plugin_update_action_state (EogExiv2RatingPlugin *plugin, EogT
     if (G_LIKELY (thumbview))
     {
         enable = (eog_thumb_view_get_n_selected (thumbview) != 0);
-        //enable = (eog_thumb_view_get_first_selected_image(thumbview) != 0);
         if (enable) {
-            //plugin->exifproxy->ref(*plugin->window);  <-- this is the prev file before the change
-            plugin->exifproxy->ref(*thumbview);
-            //std::cout << *plugin->exifproxy << std::endl; 
+	    EogImage*  image = eog_thumb_view_get_first_selected_image(thumbview);
+	    GFile*  f = eog_image_get_file(image);
+	    char* const  fpath = g_file_get_path(f);
+
+	    plugin->exifproxy->ref(fpath);
+	    g_free(fpath);
+
             _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
                                 NULL,
                                 plugin->exifproxy->valid() ? 
