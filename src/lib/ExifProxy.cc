@@ -24,23 +24,11 @@ ExifProxy::ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
 #ifdef EOG_PLUGIN_XMP_INIT_LOCK
     // not thread safe!!!!  need to initialize XMPtoolkit
     Exiv2::XmpParser::initialize(_XmpLock::lockUnlock, &_xmplock);
+#endif
 #if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,27,4)
     Exiv2::enableBMFF();
 #endif
-#endif
 }
-
-    #if 0
-    ExifProxy&  ExifProxy::ref(EogThumbView& ev_)
-    {
-        return ref(*eog_thumb_view_get_first_selected_image(&ev_));
-    }
-
-    ExifProxy&  ExifProxy::ref(EogWindow& ew_)
-    {
-        return ref( *eog_window_get_image(&ew_) );
-    }
-    #endif
 
 ExifProxy&  ExifProxy::ref(const char* fpath_)
 {
