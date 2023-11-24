@@ -24,13 +24,36 @@ enum {
 	PROP_WINDOW
 };
 
+static void
+statusbar_set_rating(GtkStatusbar *statusbar,
+                    EomThumbView *view,
+		    const char* rating)
+{
+    EomImage *image;
+
+    if (eom_thumb_view_get_n_selected (view) == 0) {
+	return;
+    }
+
+    gtk_statusbar_pop (statusbar, 0);
+    gtk_statusbar_push (statusbar, 0, rating);
+    gtk_widget_show (GTK_WIDGET (statusbar));
+}
+
+
+static const char*  RATING_DEFAULT_INFO = "XMP Rating: -/-";
+
 extern "C" {
 static void
 exiv2rate_cb(GtkAction *action,
            EomExiv2RatingPlugin *plugin)
 {
-    eom_debug_message (DEBUG_PLUGINS, "rating file");
-    g_print("Rated %s %s\n", plugin->exifproxy->file().c_str(), plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "XMP Rating: -/-");
+    const char*  info = plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : RATING_DEFAULT_INFO;
+    eom_debug_message(DEBUG_PLUGINS, "Updating rating  %s %s\n", plugin->exifproxy->file().c_str(), info); 
+
+    statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
+			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
+			 info);
 }
 }
 
@@ -131,6 +154,7 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 
     EomWindow *window = plugin->window;
     GtkWidget *thumbview = eom_window_get_thumb_view (window);
+    GtkWidget *statusbar = eom_window_get_statusbar (window);
 
     eom_debug (DEBUG_PLUGINS);
 
@@ -143,6 +167,15 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 	    G_N_ELEMENTS (action_entries), plugin);
     G_GNUC_END_IGNORE_DEPRECATIONS;
 
+
+    plugin->statusbar = gtk_statusbar_new ();
+    gint  minh, nath;
+    gtk_widget_get_preferred_height(plugin->statusbar, &minh, &nath);
+    gint  minw, natw;
+    gtk_widget_get_preferred_width(plugin->statusbar, &minw, &natw);
+    gtk_widget_set_size_request (plugin->statusbar, natw, nath);
+    gtk_box_pack_end (GTK_BOX (statusbar), plugin->statusbar, FALSE, FALSE, 0);
+
     plugin->signal_id = g_signal_connect_after (G_OBJECT (thumbview), "selection_changed",
 	    G_CALLBACK (selection_changed_cb), plugin);
 
@@ -150,6 +183,8 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 
     plugin->ui_id = gtk_ui_manager_add_ui_from_string (manager, ui_definition, -1, NULL);
     g_warn_if_fail (plugin->ui_id != 0);
+
+    selection_changed_cb(EOM_THUMB_VIEW(eom_window_get_thumb_view(window)), plugin);
 }
 
 static void
@@ -157,6 +192,7 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
 {
     EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN (activatable);
     EomWindow *window = plugin->window;
+    GtkWidget *statusbar = eom_window_get_statusbar (window);
     GtkWidget *view = eom_window_get_thumb_view (window);
     GtkUIManager *manager;
 
@@ -178,6 +214,8 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
 	plugin->signal_id = 0;
     }
 #endif
+
+    gtk_container_remove (GTK_CONTAINER (statusbar), plugin->statusbar);
 }
 
 static void
@@ -245,34 +283,7 @@ selection_changed_cb (EomThumbView         *view,
 
     g_free(path);
 
-#if 0
-    gtk_statusbar_pop (statusbar, 0);
-
-    if (!eom_image_has_data (image, EOM_IMAGE_DATA_EXIF))
-    {
-	if (!eom_image_load (image, EOM_IMAGE_DATA_EXIF, NULL, NULL))
-	{
-	    gtk_widget_hide (GTK_WIDGET (statusbar));
-	}
-    }
-
-    exif_data = eom_image_get_exif_info (image);
-
-    if (exif_data)
-    {
-	date = eom_exif_util_format_date (eom_exif_data_get_value (exif_data, EXIF_TAG_DATE_TIME_ORIGINAL, time_buffer, 32));
-	eom_exif_data_free (exif_data);
-    }
-
-    if (date)
-    {
-	gtk_statusbar_push (statusbar, 0, date);
-	gtk_widget_show (GTK_WIDGET (statusbar));
-	g_free (date);
-    }
-    else
-    {
-	gtk_widget_hide (GTK_WIDGET (statusbar));
-    }
-#endif
+    statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
+			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
+			 plugin->exifproxy->rating());
 }

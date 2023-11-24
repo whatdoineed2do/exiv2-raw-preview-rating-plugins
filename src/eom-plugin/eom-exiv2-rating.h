@@ -55,6 +55,7 @@ struct _EomExiv2RatingPlugin {
 	gulong signal_id;
 
 	ExifProxy*  exifproxy;
+	GtkWidget* statusbar;
 };
 
 /*
