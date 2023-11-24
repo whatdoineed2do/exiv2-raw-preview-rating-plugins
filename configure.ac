@@ -30,7 +30,7 @@ if test "x$use_eog" != xno ; then
                 AC_SUBST(EOG_CFLAGS)
                 AC_SUBST(EOG_LIBS)
 		PKG_CHECK_VAR([EOG_PLUGINS_DIR],[eog],[pluginsdir])
-		PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
+		need_peas=yes
            ])
 fi
 AM_CONDITIONAL([HAVE_EOG], [test "x$use_eog" = xyes])
@@ -47,9 +47,15 @@ if test "x$use_eom" != xno ; then
                 AC_DEFINE([HAVE_EOM])
                 AC_SUBST(EOM_CFLAGS)
                 AC_SUBST(EOM_LIBS)
+		PKG_CHECK_VAR([EOM_PLUGINS_DIR],[eom],[pluginsdir])
+		need_peas=yes
            ])
 fi
 AM_CONDITIONAL([HAVE_EOM], [test "x$use_eom" = xyes])
+
+if test "x$need_peas" != xno ; then
+PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
+fi
 
 
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
@@ -86,6 +92,7 @@ AC_OUTPUT([
     Makefile
     src/Makefile
     src/eog-plugin/Makefile
+    src/eom-plugin/Makefile
     src/gdk-pixbuf/Makefile
     tests/Makefile
 ])
