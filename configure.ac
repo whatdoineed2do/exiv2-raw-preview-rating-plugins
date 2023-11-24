@@ -18,8 +18,23 @@ PKG_PROG_PKG_CONFIG
 LIBEXIV2_RATINGS_SO_VERSION=1.3.3.1
 LIBEXIV2_PIXBUF_LOADER_SO_VERSION=1.3.3.1
 
-PKG_CHECK_MODULES(EOG,         [eog             >= 3.24.1])
-PKG_CHECK_VAR([EOG_PLUGINS_DIR],[eog],[pluginsdir])
+AC_ARG_ENABLE(eog,
+        AS_HELP_STRING([--disable-eog],[do not build EOG exif rating plugin]),
+        [ use_eog="${enableval}" ], [ use_eog=yes ] )
+
+if test "x$use_eog" != xno ; then
+        PKG_CHECK_MODULES(EOG, [eog >= 3.24.1], [ use_eog=yes ], [ use_eog=no ])
+        AH_TEMPLATE([HAVE_EOG], [build EOG exif rating plugin])
+        AS_IF([test "x$use_eog" = "xyes"], [
+                AC_DEFINE([HAVE_EOG])
+                AC_SUBST(EOG_CFLAGS)
+                AC_SUBST(EOG_LIBS)
+		PKG_CHECK_VAR([EOG_PLUGINS_DIR],[eog],[pluginsdir])
+		PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
+           ])
+fi
+AM_CONDITIONAL([HAVE_EOG], [test "x$use_eog" = xyes])
+
 
 PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
 PKG_CHECK_MODULES(EXIV,        [exiv2           >= 0.25])
@@ -28,7 +43,6 @@ PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
 PKG_CHECK_VAR([GDKPIXBUF_MODULES_DIR],[gdk-pixbuf-2.0],[gdk_pixbuf_moduledir])
 PKG_CHECK_VAR([GDKPIXBUF_LOADER_CACHE],[gdk-pixbuf-2.0],[gdk_pixbuf_cache_file])
 
-PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
 
 AC_ARG_ENABLE([debug-code],
 	[AS_HELP_STRING([--enable-debug],
@@ -44,10 +58,15 @@ else
 fi
 
 
+if test "x$use_eog" = "xno" ; then
+    sed -i "s#src/eog-plugin##" Makefile.am
+    sed -i "s/eog-plugin//" src/Makefile.am
+fi
+
 AC_OUTPUT([
-Makefile
-src/Makefile
-src/eog-plugin/Makefile
-src/gdk-pixbuf/Makefile
-tests/Makefile
+    Makefile
+    src/Makefile
+    src/eog-plugin/Makefile
+    src/gdk-pixbuf/Makefile
+    tests/Makefile
 ])
