@@ -10,8 +10,8 @@ namespace  Exiv2GdkPxBufLdr
 class Buf
 {
   public:
-    Buf() : _buf(NULL), _sz(0), _bufsz(0) { }
-    Buf(size_t sz_) : _buf(NULL), _sz(0), _bufsz(0) { alloc(sz_); }
+    Buf() : _buf(NULL), _bufsz(0), _sz(0) { }
+    Buf(size_t sz_) : _buf(NULL), _bufsz(0), _sz(0) { alloc(sz_); }
 
     ~Buf() { free(); }
 

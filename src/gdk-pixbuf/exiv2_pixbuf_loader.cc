@@ -166,41 +166,6 @@ struct Exiv2PxbufCtx
 
 extern "C" {
 
-static
-GdkPixbuf*  _gpxbf_load(FILE* f_, GError** err_)
-{
-    GdkPixbuf*  pixbuf = NULL;
-
-    DBG_LOG("starting FILE load");
-
-    try
-    {
-	std::string  mimeType;
-	ImgFactory::Buf  prevwbuf;
-	ImgFactory::instance().create(f_, prevwbuf, mimeType);
-
-	const Exiv2GdkPxBufLdr::PixbufLdrBuf&&  plb = Exiv2GdkPxBufLdr::_createPixbuf(prevwbuf, mimeType, err_);
-	pixbuf = plb.pixbuf;
-    }
-    catch (const std::exception& ex)
-    {
-	g_set_error(err_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - ", ex.what());
-    }
-    catch (...) 
-    {
-	g_set_error(err_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "failed to load/create pixbuf - unknown exception");
-    }
-    return pixbuf;
-}
-
-// hmmm, never called even if we assign in vfunc_fill()
-static
-GdkPixbuf* _gpxbf_load_xpm_data(const char **data)
-{
-    printf("%s, line %ld - load xpm data\n", __FILE__, __LINE__);
-    return NULL;
-}
-
 static 
 gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
                        GdkPixbufModulePreparedFunc prepfunc_,
@@ -262,11 +227,11 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
     }
     catch (const std::exception& ex)
     {
-	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - ", ex.what());
+	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - %s", ex.what());
     }
     catch (...) 
     {
-	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "failed to load/create pixbuf - unknown exception: %s, %ld", __FILE__, __LINE__);
+	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_UNSUPPORTED_OPERATION, "failed to load/create pixbuf - unknown exception: %s, %d", __FILE__, __LINE__);
     }
     g_byte_array_free(ctx->data, TRUE);
     g_free(ctx);

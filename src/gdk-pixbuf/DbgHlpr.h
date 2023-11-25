@@ -50,8 +50,8 @@ class DbgHlpr
     static std::unique_ptr<DbgHlpr>  _instance;
     static std::once_flag  _once;
 
-    const pid_t  _pid;
     int  _fd;
+    const pid_t  _pid;
 
 
     template<typename T>

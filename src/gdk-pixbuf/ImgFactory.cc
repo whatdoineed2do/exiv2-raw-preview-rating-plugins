@@ -906,7 +906,7 @@ ImgFactory::Buf&  ImgFactory::create(FILE* f_, ImgFactory::Buf& buf_, std::strin
 {
     const long  where = ftell(f_);
     fseek(f_, 0, SEEK_END);
-    const long  sz = ftell(f_);
+    const size_t  sz = ftell(f_);
     fseek(f_, 0, SEEK_SET);
     _tmp.alloc(sz);
     if ( (fread (_tmp.buf(), 1, sz, f_)) != sz) {
@@ -1169,7 +1169,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	magick.filterType(Magick::LanczosFilter);
 	magick.quality(70);
 	char  tmp[8];  // its a short, can't be more than 65535
-	const int  len = snprintf(tmp, sizeof(tmp), " %ld ", PREVIEW_LIMIT);
+	const int  len = snprintf(tmp, sizeof(tmp), " %d ", PREVIEW_LIMIT);
         if (magick.rows() < magick.columns()) {
             tmp[len-1] = 'x';
         }
@@ -1183,7 +1183,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
             DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
 
 	std::ostringstream  exif;
-	for (int i=0; i<sizeof(etags)/sizeof(Exiv2::ExifKey); i++) {
+	for (size_t i=0; i<sizeof(etags)/sizeof(Exiv2::ExifKey); i++) {
 	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etags[i]);
 	    if (e == exif_.end()) {
 		exif << "[N/F:" << etags[i].key() << "]";

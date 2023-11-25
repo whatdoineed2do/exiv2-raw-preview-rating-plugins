@@ -23,7 +23,7 @@ class ImgFactory
 	Buf() : _buf(NULL), _sz(0) { }
 	~Buf() = default;
 
-	Buf(Buf& rhs_) : _magick(rhs_._magick), _exiv2(rhs_._exiv2)
+	Buf(Buf& rhs_) : _exiv2(rhs_._exiv2), _magick(rhs_._magick)
 	{ _assign(rhs_); }
 
 	Buf&  operator=(Buf& rhs_)
@@ -97,8 +97,8 @@ class ImgFactory
     static std::unique_ptr<ImgFactory>  _instance;
     static std::once_flag  _once;
 
-    const Magick::Blob  _srgbICC;
     const Magick::Blob  _argbICC;
+    const Magick::Blob  _srgbICC;
 
     mutable Exiv2GdkPxBufLdr::Buf  _tmp;
 };
