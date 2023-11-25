@@ -15,7 +15,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -yq \
-        build-essential autotools-dev autoconf libtool \
+        build-essential git autotools-dev autoconf libtool \
         libmagick++-6.q16-dev \
         libexiv2-dev \
         libgtk2.0-dev libpeas-dev eog-dev eom-dev
@@ -31,20 +31,26 @@ jobs:
       run: |
         autoreconf --install
         autoconf
+        git checkout src/Makefile.am
         ./configure --disable-eom
+        make clean
         make
 
     - name: Build except EoG
       run: |
         autoreconf --install
         autoconf
+        git checkout src/Makefile.am
         ./configure --disable-eog
+        make clean
         make
 
     - name: Build gdk pixbuf only
       run: |
         autoreconf --install
         autoconf
+        git checkout src/Makefile.am
         ./configure --disable-eom --disable-eog
+        make clean
         make
 
