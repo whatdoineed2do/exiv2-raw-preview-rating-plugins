@@ -29,8 +29,6 @@ statusbar_set_rating(GtkStatusbar *statusbar,
                     EomThumbView *view,
 		    const char* rating)
 {
-    EomImage *image;
-
     if (eom_thumb_view_get_n_selected (view) == 0) {
 	return;
     }
@@ -269,9 +267,7 @@ selection_changed_cb (EomThumbView         *view,
 	eom_debug_message (DEBUG_PLUGINS, "selection changed (exit previous)");
 	return;
     }
-    EomImage *image;
-
-    image = eom_thumb_view_get_first_selected_image (view);
+    EomImage*  image = eom_thumb_view_get_first_selected_image (view);
 
     GFile* file = eom_image_get_file(image);
     char* path = g_file_get_path(file);
