@@ -1,5 +1,5 @@
 AC_PREREQ(2.64)
-AC_INIT([eog-plugin-exif-rating-raw-viewer], [v1.3.4], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
+AC_INIT([eog-plugin-exif-rating-raw-viewer], [v1.4.1], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer/issues], [https://github.com/whatdoineed2do/eog-plugin-exif-rating-raw-viewer], [whatdoineed2do@nospam-github.com])
 
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])
@@ -17,9 +17,6 @@ PKG_PROG_PKG_CONFIG
 
 AM_CPPFLAGS="-Wall"
 AC_SUBST([AM_CPPFLAGS])
-
-LIBEXIV2_RATINGS_SO_VERSION=1.3.4
-LIBEXIV2_PIXBUF_LOADER_SO_VERSION=1.3.4
 
 AC_ARG_ENABLE(eog,
         AS_HELP_STRING([--disable-eog],[do not build EOG exif rating plugin]),
