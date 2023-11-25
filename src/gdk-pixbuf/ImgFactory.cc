@@ -31,7 +31,7 @@ class Env
     }
 
     Env() 
-	: _previewScaleLimit(1600),
+	: _previewScaleLimit(1632),
          /* The D800 has 4x embedded imgs (160, 530, 1632, * full 7360) - no 
           * point picking the largest one and scaling so we should deflt to 
           * something sensible
@@ -952,7 +952,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     while (p != list.end())
     {
         DBG_LOG("preview #", i, " width=", p->width_, " height=", p->height_);
-	if (p->width_ > PREVIEW_LIMIT || p->height_ > PREVIEW_LIMIT) {
+	if (p->width_ >= PREVIEW_LIMIT || p->height_ >= PREVIEW_LIMIT) {
 	    pp = p;
             DBG_LOG("preview #", i, "  SELECTED");
             break;
