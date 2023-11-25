@@ -13,6 +13,8 @@ This project provides 3x plugins:
 ## Intended Usage
 For use when reviewing and making _first cut_ selections from RAW files from within a Linux graphical environment: a precursor ahead of editting your RAW files where a faster lightweight workflow is required (no need for a VM with CaptureNX or Lightroom etc or native Linux RawTherapee etc).
 
+The `EXIV2_PIXBUF_LOADER_SCALE_LIMIT` is meant to help optimise needless scaling of images: if you have a 36 megapixel RAW image it may have a small number of embedded preview images of varying and increasing sizes, which is what Nikon cameras tend to do: a Nikon RAW file may embed preview images of 570x, 1632x and full (36mp) 7360x. If your screen is only 1600 pixels wide, there may be no point in using the 36mp preview image that is then scaled to fit screen.  In such an situation where you are working with a known size of embedded preview image sizes, you can set `EXIV2_PIXBUF_LOADER_SCALE_LIMIT` to the desired size to avoid potential needless image scaling for display.
+
 ## Setting/Unsetting EXIF/XMP Rating
 Using `eog` or `eom`, open any files and use `r` key to toggle rating on the current image file - the rating is only saved when moving away from the current image;  if you toggle multiple times that leaves the file in the original _rated_ state, no rating update is written to the file.
 
