@@ -216,8 +216,7 @@ eog_exiv2_ratings_plugin_activate (EogWindowActivatable *activatable)
 {
     const gchar * const accel_keys[] = { "R", NULL };
     EogExiv2RatingPlugin *plugin = EOG_EXIV_XMP_RATING_PLUGIN (activatable);
-    GMenu *model, *menu;
-    GMenuItem *item;
+    GMenu *model;
     GSimpleAction *action;
 
 
@@ -272,9 +271,6 @@ eog_exiv2_ratings_plugin_deactivate (EogWindowActivatable *activatable)
 {
     const gchar * const empty_accels[1] = { NULL };
     EogExiv2RatingPlugin *plugin = EOG_EXIV_XMP_RATING_PLUGIN (activatable);
-    GMenu *menu;
-    GMenuModel *model;
-    gint i;
 
 #ifdef EOG_PLUGIN_DEBUG
     eog_debug (DEBUG_PLUGINS);
