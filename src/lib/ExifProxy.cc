@@ -19,7 +19,7 @@ std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_)
     return os_;
 }
 
-ExifProxy::ExifProxy() : _xmp(NULL), _xmpkpos(NULL), _mtime(0)
+ExifProxy::ExifProxy() : _mtime(0), _xmp(NULL), _xmpkpos(NULL)
 {
 #ifdef EOG_PLUGIN_XMP_INIT_LOCK
     // not thread safe!!!!  need to initialize XMPtoolkit
