@@ -1,5 +1,5 @@
 [Plugin]
-Module=exiv2_rating
+Module=exiv2-rating
 IAge=2
 Name=EXIF Rating
 Icon=view-refresh
