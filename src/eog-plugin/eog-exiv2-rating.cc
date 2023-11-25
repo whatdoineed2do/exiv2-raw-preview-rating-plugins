@@ -53,14 +53,17 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (EogExiv2RatingPlugin,
 
 static void
 _upd_statusbar_exif(GtkStatusbar* statusbar_,
-                    const Exiv2::ExifData* exif_, const char* msg_)
+                    const char* rating_)
 {
     gtk_statusbar_pop(statusbar_, 0);
-    if (msg_ == NULL) {
+    if (rating_ == NULL) {
         gtk_widget_hide(GTK_WIDGET(statusbar_));
         return;
     }
-    gtk_statusbar_push(statusbar_, 0, msg_);
+    char  buf[19] = { 0 };
+    snprintf(buf, sizeof(buf), "EXIF rating: %s", rating_);
+
+    gtk_statusbar_push(statusbar_, 0, buf);
     gtk_widget_show(GTK_WIDGET(statusbar_));
 }
 
@@ -71,8 +74,7 @@ _exiv2_rating_setunset(GSimpleAction *simple, GVariant *parameter, gpointer user
     EogExiv2RatingPlugin *plugin = EOG_EXIV_XMP_RATING_PLUGIN (user_data);
 
     _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
-                        NULL,
-                        plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "XMP Rating: -/-");
+                        plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "-/-");
 }
 
 static void
@@ -189,7 +191,6 @@ eog_exiv2_ratings_plugin_update_action_state (EogExiv2RatingPlugin *plugin, EogT
 	    g_free(fpath);
 
             _upd_statusbar_exif(GTK_STATUSBAR(plugin->statusbar_exif),
-                                NULL,
                                 plugin->exifproxy->valid() ? 
                                     plugin->exifproxy->rating() : "-/-");
         }

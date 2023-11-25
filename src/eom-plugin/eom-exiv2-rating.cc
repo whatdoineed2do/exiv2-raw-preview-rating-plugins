@@ -33,20 +33,20 @@ statusbar_set_rating(GtkStatusbar *statusbar,
 	return;
     }
 
+    char  buf[19] = { 0 };
+    snprintf(buf, sizeof(buf), "EXIF rating: %s", rating);
     gtk_statusbar_pop (statusbar, 0);
-    gtk_statusbar_push (statusbar, 0, rating);
+    gtk_statusbar_push (statusbar, 0, buf);
     gtk_widget_show (GTK_WIDGET (statusbar));
 }
 
-
-static const char*  RATING_DEFAULT_INFO = "XMP Rating: -/-";
 
 extern "C" {
 static void
 exiv2rate_cb(GtkAction *action,
            EomExiv2RatingPlugin *plugin)
 {
-    const char*  info = plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : RATING_DEFAULT_INFO;
+    const char*  info = plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "-/";
     eom_debug_message(DEBUG_PLUGINS, "Updating rating  %s %s\n", plugin->exifproxy->file().c_str(), info); 
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),

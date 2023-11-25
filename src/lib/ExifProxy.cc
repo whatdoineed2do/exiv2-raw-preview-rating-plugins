@@ -75,7 +75,7 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 
 const char*  ExifProxy::rating()
 {
-    static const std::string  DEFLT_RATING = "XMP Rating: -----";
+    static const std::string  DEFLT_RATING = "-----";
     _rating = DEFLT_RATING;
 
     if (rated())
@@ -89,7 +89,7 @@ const char*  ExifProxy::rating()
 	    if (N > 5) {
 		N = 5;
 	    }
-	    char*  n = ((char*)_rating.c_str())+12;
+	    char*  n = ((char*)_rating.c_str());
 	    for (int i=0; i<N; i++) {
 		n[i] = '*';
 	    }
