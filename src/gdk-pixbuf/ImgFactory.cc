@@ -56,7 +56,7 @@ class Env
 
 	ev = "EXIV2_PIXBUF_LOADER_ROTATE";
 	if ( (tmp = getenv(ev)) ) {
-	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
+	    _rotate = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
 	}
 	g_print("%s=%d\n", ev, _rotate);
 
