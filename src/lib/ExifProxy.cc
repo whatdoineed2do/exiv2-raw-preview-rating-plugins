@@ -1,6 +1,6 @@
 #include "ExifProxy.h"
 
-#include <iostream>
+#include <glib.h>
 #include <array>
 #include <algorithm>
 
@@ -66,7 +66,7 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 	}
     }
     catch(Exiv2::AnyError & e) {
-	std::cerr << fpath_ << ": failed to set XMP rating - " << e << std::endl;
+	g_printerr("%s: failed to set XMP rating - %s\n", fpath_, e.what());
     }
 
     return *this;
@@ -161,7 +161,7 @@ bool  ExifProxy::fliprating()
     }
     catch (const std::exception& ex)
     {
-	std::cerr << _file << ": failed to update XMP rating - " << ex.what() << std::endl;
+	g_printerr("%s: failed to update XMP rating - %s\n", _file.c_str(), ex.what());
     }
     return flipped;
 }

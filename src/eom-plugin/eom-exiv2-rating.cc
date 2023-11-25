@@ -4,7 +4,7 @@
 
 #include "eom-exiv2-rating.h"
 
-#include <iostream>
+#include <sstream>
 #include <ExifProxy.h>
 
 extern "C" {
@@ -132,10 +132,13 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
 
 	if (plugin->exifproxy) {
 	    const ExifProxy::History&  h = plugin->exifproxy->history();
-	    for ( ExifProxy::History::const_iterator i=h.begin(); i!=h.end(); ++i)
-	    {
-		std::cout << *i << std::endl;
-	    }
+	    std::ostringstream  os;
+	    std::for_each(h.begin(), h.end(), [&os](const auto& e) {
+		os << e;
+		g_print("%s\n", os.str().c_str());
+		os.str("");
+		os.clear();
+	    });
 	}
 	delete plugin->exifproxy;
 	plugin->exifproxy = NULL;

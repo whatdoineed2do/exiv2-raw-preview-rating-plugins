@@ -2,9 +2,10 @@
 
 #include <omp.h>
 
-#include <iostream>
 #include <functional>
 #include <chrono>
+
+#include <glib.h>
 
 #include "Buf.h"
 
@@ -45,25 +46,25 @@ class Env
 	if ( (tmp = getenv(ev)) ) {
 	    _previewScaleLimit = (unsigned short)atoi(tmp);
 	}
-        std::cout << ev << "=" << _previewScaleLimit << std::endl;
+	g_print("%s=%d\n", ev, _previewScaleLimit);
 
 	ev = "EXIV2_PIXBUF_LOADER_CONVERT_SRGB";
 	if ( (tmp = getenv(ev)) ) {
 	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
 	}
-        std::cout << ev << "=" << _convertSRGB << std::endl;
+	g_print("%s=%d\n", ev, _convertSRGB);
 
 	ev = "EXIV2_PIXBUF_LOADER_ROTATE";
 	if ( (tmp = getenv(ev)) ) {
 	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
 	}
-        std::cout << ev << "=" << _rotate << std::endl;
+	g_print("%s=%d\n", ev, _rotate);
 
     	ev = "EXIV2_PIXBUF_LOADER_FONT";
 	if ( (tmp = getenv(ev)) ) {
 	    _font = tmp;
 	}
-        std::cout << ev << "=" << _font << std::endl;
+	g_print("%s=%s\n", ev, _font.c_str());
     }
 
     unsigned short  previewScaleLimit() const
@@ -1140,7 +1141,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	    }
 	    catch (const std::exception& ex)
 	    {
-		std::cerr << "failed to convert to SRGB - " << ex.what() << std::endl;
+		g_printerr("failed to convert to SRGB - %s\n", ex.what());
 	    }
 	}
     }
