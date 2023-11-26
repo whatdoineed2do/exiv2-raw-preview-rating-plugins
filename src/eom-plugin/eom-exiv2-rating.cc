@@ -281,6 +281,7 @@ selection_changed_cb (EomThumbView         *view,
     eom_debug_message (DEBUG_PLUGINS, "selection changed to %s", path);
 
     g_free(path);
+    g_object_unref(image);
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
