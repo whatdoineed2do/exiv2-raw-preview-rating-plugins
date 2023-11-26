@@ -177,8 +177,9 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
     gtk_widget_set_size_request (plugin->statusbar, natw, nath);
     gtk_box_pack_end (GTK_BOX (statusbar), plugin->statusbar, FALSE, FALSE, 0);
 
-    plugin->signal_id = g_signal_connect_after (G_OBJECT (thumbview), "selection_changed",
-	    G_CALLBACK (selection_changed_cb), plugin);
+    plugin->signal_id = g_signal_connect_after (G_OBJECT (thumbview),
+			    "selection-changed",
+			    G_CALLBACK (selection_changed_cb), plugin);
 
     gtk_ui_manager_insert_action_group (manager, plugin->ui_action_group, -1);
 
