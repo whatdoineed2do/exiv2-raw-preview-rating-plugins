@@ -27,14 +27,23 @@ enum {
 static void
 statusbar_set_rating(GtkStatusbar *statusbar,
                     EomThumbView *view,
-		    const char* rating)
+		    ExifProxy& proxy)
 {
     if (eom_thumb_view_get_n_selected (view) == 0) {
 	return;
     }
 
+    if (!proxy.valid()) {
+	eom_debug_message(DEBUG_PLUGINS, "invalid underlying image %s", proxy.file().c_str());
+	gtk_widget_hide (GTK_WIDGET(statusbar));
+        return;
+    }
+
+    const char*  rating = proxy.rating();
+    const char*  info =  rating ? rating : "-/-";
+
     char  buf[19] = { 0 };
-    snprintf(buf, sizeof(buf), "EXIF rating: %s", rating);
+    snprintf(buf, sizeof(buf), "EXIF rating: %s", info);
     gtk_statusbar_pop (statusbar, 0);
     gtk_statusbar_push (statusbar, 0, buf);
     gtk_widget_show (GTK_WIDGET (statusbar));
@@ -46,12 +55,17 @@ static void
 exiv2rate_cb(GtkAction *action,
            EomExiv2RatingPlugin *plugin)
 {
-    const char*  info = plugin->exifproxy->fliprating() ? plugin->exifproxy->rating() : "-/";
-    eom_debug_message(DEBUG_PLUGINS, "Updating rating  %s %s\n", plugin->exifproxy->file().c_str(), info); 
+    const bool  b = plugin->exifproxy->fliprating();
+    if (b) {
+	eom_debug_message(DEBUG_PLUGINS, "Rating action updated rating %s %s", plugin->exifproxy->file().c_str(), plugin->exifproxy->rating());
+    }
+    else {
+	eom_debug_message(DEBUG_PLUGINS, "Rating action invalid %s", plugin->exifproxy->file().c_str());
+    }
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 info);
+			 *plugin->exifproxy);
 }
 }
 
@@ -290,5 +304,5 @@ selection_changed_cb (EomThumbView         *view,
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 plugin->exifproxy->rating());
+			 *plugin->exifproxy);
 }
