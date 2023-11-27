@@ -66,7 +66,16 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 	}
     }
     catch(Exiv2::AnyError & e) {
-	g_printerr("%s: failed to set XMP rating - %s\n", fpath_, e.what());
+	switch (e.code())
+	{
+	    case Exiv2::kerDataSourceOpenFailed:
+	    case Exiv2::kerFileContainsUnknownImageType:
+	    case Exiv2::kerUnsupportedImageType:
+	        break;
+
+	    default:
+	        g_printerr("%s: failed to set XMP rating - (%d) %s\n", fpath_, e.code(), e.what());
+	}
     }
 
     return *this;
