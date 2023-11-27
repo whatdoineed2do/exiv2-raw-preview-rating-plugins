@@ -50,13 +50,12 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
     _clear();
     _mtime = st.st_mtime;
 
+    _file = fpath_;
     try
     {
 	_img = Exiv2::ImageFactory::open(fpath_);
 	_img->readMetadata();
 	//_xmpkpos = NULL;
-
-	_file = fpath_;
 
 	Exiv2::XmpData&  xmpData = _img->xmpData();
 	Exiv2::XmpData::iterator  kpos = xmpData.findKey(Exiv2::XmpKey(ExifProxy::_XMPKEY));
@@ -84,6 +83,10 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 
 const char*  ExifProxy::rating()
 {
+    if (_img.get() == 0) {
+        return NULL;
+    }
+
     static const std::string  DEFLT_RATING = "-----";
     _rating = DEFLT_RATING;
 
