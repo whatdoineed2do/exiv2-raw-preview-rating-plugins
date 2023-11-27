@@ -2,7 +2,7 @@
 Module=exiv2-rating
 IAge=2
 Name=EXIF Rating
-Icon=view-refresh
+Icon=document-properties
 Description=Add/Remove EXIF/XMP rating on images
 Authors=Ray Fung
 Copyright=Copyright © 2023 Ray Fung

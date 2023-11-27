@@ -69,7 +69,7 @@ static const gchar* const ui_definition = "<ui><menubar name=\"MainMenu\">"
 	"</popup></ui>";
 
 static const GtkActionEntry action_entries[] = {
-	{ "EomPluginRunExiv2Rating", "view-refresh", "EXIF Rate Image", "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) }
+	{ "EomPluginRunExiv2Rating", "document-properties", "EXIF Rate Image", "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) }
 };
 
 static void
