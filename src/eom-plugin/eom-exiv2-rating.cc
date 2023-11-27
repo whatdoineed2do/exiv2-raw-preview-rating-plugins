@@ -79,6 +79,7 @@ eom_exiv2_rating_plugin_set_property (GObject      *object,
                                 GParamSpec   *pspec)
 {
     EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN (object);
+    eom_debug(DEBUG_PLUGINS);
 
     switch (prop_id)
     {
@@ -99,6 +100,7 @@ eom_exiv2_rating_plugin_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
     EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN (object);
+    eom_debug(DEBUG_PLUGINS);
 
     switch (prop_id)
     {
@@ -115,7 +117,7 @@ eom_exiv2_rating_plugin_get_property (GObject    *object,
 static void
 eom_exiv2_rating_plugin_init (EomExiv2RatingPlugin *plugin)
 {
-    eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin initializing");
+    eom_debug(DEBUG_PLUGINS);
     plugin->exifproxy = new ExifProxy();
 }
 
@@ -124,7 +126,7 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
 {
     EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN (object);
 
-    eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin disposing");
+    eom_debug(DEBUG_PLUGINS);
 
     if (plugin->window != NULL) {
 	g_object_unref (plugin->window);
@@ -223,7 +225,7 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
 static void
 eom_exiv2_rating_plugin_class_init (EomExiv2RatingPluginClass *klass)
 {
-    eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin class init");
+    eom_debug(DEBUG_PLUGINS);
 
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
@@ -237,7 +239,7 @@ eom_exiv2_rating_plugin_class_init (EomExiv2RatingPluginClass *klass)
 static void
 eom_exiv2_rating_plugin_class_finalize (EomExiv2RatingPluginClass *klass)
 {
-    eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin class finalise");
+    eom_debug(DEBUG_PLUGINS);
     /* dummy function - used by G_DEFINE_DYNAMIC_TYPE_EXTENDED */
 }
 
@@ -246,7 +248,7 @@ extern "C" {
 static void
 eom_window_activatable_iface_init (EomWindowActivatableInterface *iface)
 {
-    eom_debug_message (DEBUG_PLUGINS, "EomExiv2RatingPlugin iface finalise");
+    eom_debug(DEBUG_PLUGINS);
 
     iface->activate = eom_exiv2_rating_plugin_activate;
     iface->deactivate = eom_exiv2_rating_plugin_deactivate;
