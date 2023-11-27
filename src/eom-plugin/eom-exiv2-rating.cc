@@ -168,7 +168,6 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 
     gtk_action_group_add_actions (plugin->ui_action_group, action_entries,
 	    G_N_ELEMENTS (action_entries), plugin);
-    G_GNUC_END_IGNORE_DEPRECATIONS;
 
 
     plugin->statusbar = gtk_statusbar_new ();
@@ -186,6 +185,7 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
     gtk_ui_manager_insert_action_group (manager, plugin->ui_action_group, -1);
 
     plugin->ui_id = gtk_ui_manager_add_ui_from_string (manager, ui_definition, -1, NULL);
+    G_GNUC_END_IGNORE_DEPRECATIONS;
     g_warn_if_fail (plugin->ui_id != 0);
 
     selection_changed_cb(EOM_THUMB_VIEW(eom_window_get_thumb_view(window)), plugin);
@@ -204,11 +204,13 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
 
     manager = eom_window_get_ui_manager (plugin->window);
 
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
     gtk_ui_manager_remove_ui (manager, plugin->ui_id);
 
     gtk_ui_manager_remove_action_group (manager, plugin->ui_action_group);
 
     gtk_ui_manager_ensure_update (manager);
+    G_GNUC_END_IGNORE_DEPRECATIONS
 
 #if GLIB_CHECK_VERSION(2,62,0)
     g_clear_signal_handler (&plugin->signal_id, view);
