@@ -192,7 +192,7 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
     gtk_widget_set_size_request (plugin->statusbar, natw, nath);
     gtk_box_pack_end (GTK_BOX (statusbar), plugin->statusbar, FALSE, FALSE, 0);
 
-    plugin->signal_id = g_signal_connect_after (G_OBJECT (thumbview),
+    plugin->signal.selection = g_signal_connect_after (G_OBJECT (thumbview),
 			    "selection-changed",
 			    G_CALLBACK (selection_changed_cb), plugin);
 
@@ -227,11 +227,11 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
     G_GNUC_END_IGNORE_DEPRECATIONS
 
 #if GLIB_CHECK_VERSION(2,62,0)
-    g_clear_signal_handler (&plugin->signal_id, view);
+    g_clear_signal_handler (&plugin->signal.selection, view);
 #else
-    if (plugin->signal_id != 0) {
-	g_signal_handler_disconnect (view, plugin->signal_id);
-	plugin->signal_id = 0;
+    if (plugin->signal.selection != 0) {
+	g_signal_handler_disconnect (view, plugin->signal.selection);
+	plugin->signal.selection = 0;
     }
 #endif
 

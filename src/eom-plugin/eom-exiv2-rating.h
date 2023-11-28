@@ -52,7 +52,9 @@ struct _EomExiv2RatingPlugin {
 	EomWindow *window;
 	GtkActionGroup *ui_action_group;
 	guint ui_id;
-	gulong signal_id;
+	struct {
+	    gulong selection;
+	} signal;
 
 	ExifProxy*  exifproxy;
 	GtkWidget* statusbar;
