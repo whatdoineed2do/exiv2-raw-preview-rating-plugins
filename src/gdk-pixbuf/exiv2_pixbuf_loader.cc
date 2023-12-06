@@ -274,13 +274,37 @@ void fill_info (GdkPixbufFormat *info)
             100
         },
 
+	//DNG-TIFF
+        {
+            (char*)"MM \x2a   ",
+            (char*)"  z zzz",
+            80
+        },
+        {
+            (char*)"II\x2a \x08   ",
+            (char*)"   z zzz",
+            80
+        },
+	{
+            (char*)"MM \x2a   \x08",
+            (char*)"  z zzz ",
+            100 
+        },
+	{
+            (char*)"MM \x2a   \x12",
+            (char*)"  z zzz ",
+            100 
+        },
+
         { NULL, NULL, 0 }
     };
         
+    // xdg-mime query filetype foo.xxx
     static const gchar *mime_types[] = {
         "image/x-canon-cr2",
         "image/x-canon-crw",
         "image/x-nikon-nef",
+	"image/x-adobe-dng",
         NULL
     };
         
@@ -288,6 +312,7 @@ void fill_info (GdkPixbufFormat *info)
         "cr2",
         "crw",
         "nef",
+        "dng",
         NULL
     };
         
