@@ -204,30 +204,37 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 
     DBG_LOG("starting buf _gpxbuf_sload, len=", ctx->data->len);
 
+    std::string  mimeType;
     try
     {
-	std::string  mimeType;
 	ImgFactory::Buf  prevwbuf;
 	ImgFactory::instance().create((unsigned char*)ctx->data->data, (ssize_t)ctx->data->len, prevwbuf, mimeType);
 
-	const Exiv2GdkPxBufLdr::PixbufLdrBuf&&  plb = Exiv2GdkPxBufLdr::_createPixbuf(prevwbuf, mimeType, error_);
-	if (plb.pixbuf) 
+	try
 	{
-	    if (ctx->prepared_func != NULL) {
-		(*ctx->prepared_func)(plb.pixbuf, NULL, ctx->user_data);
+	    const Exiv2GdkPxBufLdr::PixbufLdrBuf  plb = Exiv2GdkPxBufLdr::_createPixbuf(prevwbuf, mimeType, error_);
+	    if (plb.pixbuf)
+	    {
+		if (ctx->prepared_func != NULL) {
+		    (*ctx->prepared_func)(plb.pixbuf, NULL, ctx->user_data);
+		}
+		if (ctx->updated_func != NULL) {
+		    (*ctx->updated_func)(plb.pixbuf, 0, 0,
+			    gdk_pixbuf_get_width(plb.pixbuf),
+			    gdk_pixbuf_get_height(plb.pixbuf),
+			    ctx->user_data);
+		}
+		result = TRUE;
 	    }
-	    if (ctx->updated_func != NULL) {
-		(*ctx->updated_func)(plb.pixbuf, 0, 0, 
-				     gdk_pixbuf_get_width(plb.pixbuf), 
-				     gdk_pixbuf_get_height(plb.pixbuf),
-				     ctx->user_data);
-	    }
-	    result = TRUE;
-        }
+	}
+	catch (const std::exception& ex)
+	{
+	    g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - %s", ex.what());
+	}
     }
     catch (const std::exception& ex)
     {
-	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to load/create pixbuf - %s", ex.what());
+	g_set_error(error_, GDK_PIXBUF_ERROR, GDK_PIXBUF_ERROR_FAILED, "failed to create pixbuf for %s - %s", mimeType.c_str(), ex.what());
     }
     catch (...) 
     {
