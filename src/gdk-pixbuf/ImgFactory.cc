@@ -1225,7 +1225,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 #if MagickLibInterface == 5  // IM 6.x
         info.opacity(65535/3.0);
         info.transparent("grey");
-#elif MagickLibInterface == 6  // IM 7
+#elif MagickLibInterface >= 6  // IM 7
         info.opaque(Magick::Color("none"), Magick::Color("grey"));
         info.backgroundColor(Magick::Color("grey"));
 #endif
