@@ -919,10 +919,19 @@ ImgFactory::Buf&  ImgFactory::create(FILE* f_, ImgFactory::Buf& buf_, std::strin
 
 ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, ImgFactory::Buf& imgbuf_, std::string& mimeType_)
 {
+    if (bufsz_ <= 0) {
+	throw std::invalid_argument("invalid image data");
+    }
+
     const Exiv2GdkPxBufLdr::Env&  env = Exiv2GdkPxBufLdr::Env::instance();
 
 
     Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf_, bufsz_);
+    if (!orig->good()) {
+	std::ostringstream  err;
+	err << "invalid image data (len=" << bufsz_ << ")";
+        throw std::invalid_argument(err.str());
+    }
     orig->readMetadata();
 
     Exiv2::PreviewManager  exvprldr_(*orig);
@@ -935,6 +944,9 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
     DBG_LOG("#previews=", list.size());
+    if (list.empty()) {
+	throw std::underflow_error("no embedded previews");
+    }
 
     /* exiv2 provides images sorted from small->large -  grabbing the 
      * largest preview but try to avoid getting somethign too large due
