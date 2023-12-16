@@ -926,7 +926,12 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     const Exiv2GdkPxBufLdr::Env&  env = Exiv2GdkPxBufLdr::Env::instance();
 
 
-    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(buf_, bufsz_);
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
+    Exiv2::Image::UniquePtr
+#else
+    Exiv2::Image::AutoPtr
+#endif
+    orig = Exiv2::ImageFactory::open(buf_, bufsz_);
     if (!orig->good()) {
 	std::ostringstream  err;
 	err << "invalid image data (len=" << bufsz_ << ")";
@@ -987,7 +992,12 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     if (env.rotate() && 
         (d = exif_.findKey(Exiv2::ExifKey("Exif.Image.Orientation")) ) != exif_.end()) 
     {
-        long  orientation = d->toLong();
+        long  orientation =
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
+	    d->toInt64();
+#else
+	    d->toLong();
+#endif
         switch (orientation) {
             case 3:  orientation = 180;  break;
             case 6:  orientation =  90;  break;
@@ -1092,13 +1102,20 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
                         ++pcs;
                         continue;
                     }
-		    DBG_LOG("found color space ", pcs->key, " val=", d->toLong());
+                    const long  l = 
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
+			d->toInt64();
+#else
+			d->toLong();
+#endif
+
+		    DBG_LOG("found color space ", pcs->key, " val=", l);
 
                     /* check if this is as-shot with no further mods (ie 
                      * colorspace conv)
                      * Nikon CNX2 the only thing that can edit the RAW file???
 		     */
-		    if (d->toLong() == 2)
+		    if (l == 2)
 		    {
                         bool  doit = true;
 

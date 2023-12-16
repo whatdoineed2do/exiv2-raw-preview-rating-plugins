@@ -64,7 +64,11 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 	    _xmpkpos = kpos;
 	}
     }
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
+    catch(Exiv2::Error & e) {
+#else
     catch(Exiv2::AnyError & e) {
+#endif
 	switch (e.code())
 	{
 	    case Exiv2::kerDataSourceOpenFailed:

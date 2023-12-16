@@ -108,7 +108,11 @@ class ExifProxy
 
     time_t  _mtime;
 
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
+    Exiv2::Image::UniquePtr  _img;
+#else
     Exiv2::Image::AutoPtr  _img;
+#endif
     Exiv2::XmpData*  _xmp;
     Exiv2::XmpData::iterator  _xmpkpos;
 

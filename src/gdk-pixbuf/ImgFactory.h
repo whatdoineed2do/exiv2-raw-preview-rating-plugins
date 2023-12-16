@@ -44,8 +44,13 @@ class ImgFactory
 	{
 	    _exiv2 = data_.copy();
 
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
+	    _buf = (unsigned char*)_exiv2.c_str(0);
+	    _sz  = _exiv2.size();
+#else
 	    _buf = _exiv2.pData_;
 	    _sz  = _exiv2.size_;
+#endif
 	}
 
 	void  finalize(Magick::Image&  data_)
@@ -68,8 +73,13 @@ class ImgFactory
 		_buf = (unsigned char*)_magick.data();
 	    }
 	    else {
-		_sz  = _exiv2.size_;
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
+		_buf = (unsigned char*)_exiv2.c_str(0);
+		_sz  = _exiv2.size();
+#else
 		_buf = _exiv2.pData_;
+		_sz  = _exiv2.size_;
+#endif
 	    }
 	}
 
