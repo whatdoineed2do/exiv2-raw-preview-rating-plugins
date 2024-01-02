@@ -66,15 +66,21 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
     }
 #if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
     catch(Exiv2::Error & e) {
+	switch (e.code())
+	{
+	    case Exiv2::ErrorCode::kerDataSourceOpenFailed:
+	    case Exiv2::ErrorCode::kerFileContainsUnknownImageType:
+	    case Exiv2::ErrorCode::kerUnsupportedImageType:
+	        break;
 #else
     catch(Exiv2::AnyError & e) {
-#endif
 	switch (e.code())
 	{
 	    case Exiv2::kerDataSourceOpenFailed:
 	    case Exiv2::kerFileContainsUnknownImageType:
 	    case Exiv2::kerUnsupportedImageType:
 	        break;
+#endif
 
 	    default:
 	        g_printerr("%s: failed to set XMP rating - (%d) %s\n", fpath_, e.code(), e.what());
@@ -97,7 +103,11 @@ const char*  ExifProxy::rating()
     if (rated())
     {
 	// spec say -1..5
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
+	long  N = _xmpkpos->toInt64();
+#else
 	long  N = _xmpkpos->toLong();
+#endif
 	if (N < 0) {
 	}
 	else
