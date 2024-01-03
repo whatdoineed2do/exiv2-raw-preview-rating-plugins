@@ -68,11 +68,12 @@ class Env
 	   KEY_CONVERT_SRGB, _convertSRGB ? "true" : "false",
 	   KEY_AUTO_ORIENTATE, _rotate ? "true" : "false");
 
-	g_signal_connect(G_OBJECT(_settings), "changed", G_CALLBACK(on_settings_changed), this);
+	_changesig = g_signal_connect(G_OBJECT(_settings), "changed", G_CALLBACK(on_settings_changed), this);
     }
 
     ~Env()
     {
+	g_signal_handler_disconnect(G_OBJECT(_settings), _changesig);
 	g_object_unref(_settings);
     }
 
@@ -120,6 +121,7 @@ class Env
     std::string  _font;
 
     GSettings* _settings;
+    gulong  _changesig;
 };
 std::unique_ptr<Env>  Env::_instance = NULL;
 std::once_flag  Env::_once;
