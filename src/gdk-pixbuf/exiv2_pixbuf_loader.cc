@@ -132,7 +132,7 @@ PixbufLdrBuf  _createPixbuf(const ImgFactory::Buf& prevwbuf_, const std::string&
     if (error_ && *error_) {
 	g_error_free(*error_);
 	*error_ = NULL;
-	printf("no known loader for explicit mimetype, defaulting\n");
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "no known loader for explicit mimetype '%s', defaulting", mimeType_.c_str());
 	if (rvo.loader != NULL) {
 	    gdk_pixbuf_loader_close(rvo.loader, NULL);
 	    g_object_unref(rvo.loader);
