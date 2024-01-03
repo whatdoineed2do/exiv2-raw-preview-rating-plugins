@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include <glib.h>
+#include <gio/gio.h>
 
 #include "Buf.h"
 
@@ -39,32 +40,32 @@ class Env
 	  _convertSRGB(false),
           _rotate(true)
     {
-        const char*  ev;
-	const char*  tmp;
+	const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
 
-        ev = "EXIV2_PIXBUF_LOADER_SCALE_LIMIT";
-	if ( (tmp = getenv(ev)) ) {
-	    _previewScaleLimit = (unsigned short)atoi(tmp);
-	}
-	g_print("%s=%d\n", ev, _previewScaleLimit);
+	const gchar* const  key_font = "font";
+	const gchar* const  key_scale_limit = "scale-limit";
+	const gchar* const  key_convert_srgb = "convert-srgb";
+	const gchar* const  key_auto_orientate = "auto-orientate";
 
-	ev = "EXIV2_PIXBUF_LOADER_CONVERT_SRGB";
-	if ( (tmp = getenv(ev)) ) {
-	    _convertSRGB = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
-	}
-	g_print("%s=%d\n", ev, _convertSRGB);
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "update gdk-pixbuf via: 'gsettings list-recursively %s' and 'gsettings set %s %s %d'", schema_id, schema_id, key_scale_limit, _previewScaleLimit);
 
-	ev = "EXIV2_PIXBUF_LOADER_ROTATE";
-	if ( (tmp = getenv(ev)) ) {
-	    _rotate = (strcasecmp(tmp, "true") == 0 || strcasecmp(tmp, "yes") == 0 || strcmp(tmp, "1") == 0);
-	}
-	g_print("%s=%d\n", ev, _rotate);
+	GSettings *settings = g_settings_new(schema_id);
 
-    	ev = "EXIV2_PIXBUF_LOADER_FONT";
-	if ( (tmp = getenv(ev)) ) {
-	    _font = tmp;
-	}
-	g_print("%s=%s\n", ev, _font.c_str());
+	_previewScaleLimit = g_settings_get_int(settings, key_scale_limit);
+	gchar*  font = g_settings_get_string(settings, key_font);
+	_font = font;
+	_convertSRGB = g_settings_get_boolean(settings, key_convert_srgb);
+	_rotate = g_settings_get_boolean(settings, key_auto_orientate);
+
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "schema=%s %s=%d  %s='%s'  %s=%s  %s=%s",
+	   schema_id,
+           key_scale_limit, _previewScaleLimit,
+	   key_font, font,
+	   key_convert_srgb, _convertSRGB ? "true" : "false",
+	   key_auto_orientate, _rotate ? "true" : "false");
+
+	g_free(font);
+	g_object_unref(settings);
     }
 
     unsigned short  previewScaleLimit() const

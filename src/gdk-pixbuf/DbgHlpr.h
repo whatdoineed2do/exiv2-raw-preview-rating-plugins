@@ -14,6 +14,7 @@
 
 namespace  Exiv2GdkPxBufLdr
 {
+const char* const  G_DOMAIN = "gdk-pixbuf.exiv2-rawpreview";
 
 class DbgHlpr
 {
