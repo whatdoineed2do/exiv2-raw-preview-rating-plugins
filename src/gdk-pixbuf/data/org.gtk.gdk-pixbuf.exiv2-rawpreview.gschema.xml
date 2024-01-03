@@ -4,7 +4,7 @@
     <key name="font" type="s">
       <default>''</default>
       <summary>Font</summary>
-      <description>The font to be used for content.</description>
+      <description>The font to be used for EXIF data on image overlay</description>
     </key>
     <key name="scale-limit" type="i">
       <default>1632</default>
