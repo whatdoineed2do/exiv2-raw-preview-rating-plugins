@@ -953,6 +953,7 @@ ImgFactory::Buf&  ImgFactory::create(FILE* f_, ImgFactory::Buf& buf_, std::strin
     }
     fseek(f_, where, SEEK_SET);
 
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "processing via FILE");
     
     return create(_tmp.buf(), sz, buf_, mimeType_);
 }
@@ -988,6 +989,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     Exiv2::PreviewPropertiesList  list =  exvprldr_.getPreviewProperties();
 
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "previews=%ld, mime-type=%s", list.size(), orig->mimeType().c_str());
     DBG_LOG("#previews=", list.size());
     if (list.empty()) {
 	throw std::underflow_error("no embedded previews");
@@ -1008,7 +1010,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     unsigned  i = 0;
     while (p != list.end())
     {
-        DBG_LOG("preview #", i, " width=", p->width_, " height=", p->height_);
+        g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  preview #%d width=%ld height=%ld", i, p->width_, p->height_);
 	if (p->width_ >= PREVIEW_LIMIT || p->height_ >= PREVIEW_LIMIT) {
 	    pp = p;
             DBG_LOG("preview #", i, "  SELECTED");
@@ -1021,10 +1023,10 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	pp = list.begin();
         std::advance(pp, --i);
     }
-    DBG_LOG("using preview #", i, " width=", pp->width_, " height=", pp->height_);
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
     mimeType_ = preview.mimeType();
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  using preview #%d width=%ld height=%ld mime-type=%s", i, pp->width_, pp->height_, mimeType_.c_str());
     Exiv2::ExifData::const_iterator  d;
 
     Magick::Image  magick;
@@ -1245,7 +1247,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
         else {
             tmp[0] = 'x';
         }
-	DBG_LOG("scaling preview=", i, " to ", tmp);
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  scaling preview #%d to %s", i, tmp);
             const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
 	magick.resize(Magick::Geometry(tmp));
             const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
