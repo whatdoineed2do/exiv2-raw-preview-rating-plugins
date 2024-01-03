@@ -17,6 +17,14 @@ std::unique_ptr<ImgFactory>  ImgFactory::_instance;
 std::once_flag  ImgFactory::_once;
 
 
+const gchar* const  KEY_FONT = "font";
+const gchar* const  KEY_SCALE_LIMIT = "scale-limit";
+const gchar* const  KEY_CONVERT_SRGB = "convert-srgb";
+const gchar* const  KEY_AUTO_ORIENTATE = "auto-orientate";
+
+
+void on_settings_changed(GSettings* settings_, const gchar* key_, gpointer this_);
+
 class Env
 {
   public:
@@ -38,34 +46,56 @@ class Env
           * something sensible
           */
 	  _convertSRGB(false),
-          _rotate(true)
+          _rotate(true),
+	  _settings(NULL)
     {
 	const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
 
-	const gchar* const  key_font = "font";
-	const gchar* const  key_scale_limit = "scale-limit";
-	const gchar* const  key_convert_srgb = "convert-srgb";
-	const gchar* const  key_auto_orientate = "auto-orientate";
 
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "update gdk-pixbuf via: 'gsettings list-recursively %s' and 'gsettings set %s %s %d'", schema_id, schema_id, key_scale_limit, _previewScaleLimit);
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "update gdk-pixbuf via: 'gsettings list-recursively %s' and 'gsettings set %s %s %d'", schema_id, schema_id, KEY_SCALE_LIMIT, _previewScaleLimit);
 
-	GSettings *settings = g_settings_new(schema_id);
+	_settings = g_settings_new(schema_id);
 
-	_previewScaleLimit = g_settings_get_int(settings, key_scale_limit);
-	gchar*  font = g_settings_get_string(settings, key_font);
-	_font = font;
-	_convertSRGB = g_settings_get_boolean(settings, key_convert_srgb);
-	_rotate = g_settings_get_boolean(settings, key_auto_orientate);
+	update(_settings, KEY_SCALE_LIMIT);
+	update(_settings, KEY_FONT);
+	update(_settings, KEY_CONVERT_SRGB);
+	update(_settings, KEY_AUTO_ORIENTATE);
 
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "schema=%s %s=%d  %s='%s'  %s=%s  %s=%s",
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s'  %s=%s  %s=%s",
 	   schema_id,
-           key_scale_limit, _previewScaleLimit,
-	   key_font, font,
-	   key_convert_srgb, _convertSRGB ? "true" : "false",
-	   key_auto_orientate, _rotate ? "true" : "false");
+           KEY_SCALE_LIMIT, _previewScaleLimit,
+	   KEY_FONT, _font.c_str(),
+	   KEY_CONVERT_SRGB, _convertSRGB ? "true" : "false",
+	   KEY_AUTO_ORIENTATE, _rotate ? "true" : "false");
 
-	g_free(font);
-	g_object_unref(settings);
+	g_signal_connect(G_OBJECT(_settings), "changed", G_CALLBACK(on_settings_changed), this);
+    }
+
+    ~Env()
+    {
+	g_object_unref(_settings);
+    }
+
+    void  update(GSettings* settings_, const gchar* key_)
+    {
+	if (g_strcmp0(key_, KEY_SCALE_LIMIT) == 0) {
+	    _previewScaleLimit = g_settings_get_int(settings_, key_);
+	}
+	else if (g_strcmp0(key_, KEY_CONVERT_SRGB) == 0) {
+	    _convertSRGB = g_settings_get_boolean(settings_, key_);
+	}
+	else if (g_strcmp0(key_, KEY_AUTO_ORIENTATE) == 0) {
+	    _rotate = g_settings_get_boolean(settings_, key_);
+	}
+	else if (g_strcmp0(key_, KEY_FONT) == 0) {
+	    gchar*  font = g_settings_get_string(settings_, key_);
+	    _font = font;
+	    g_free(font);
+	}
+	else 
+	{
+	    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unhandled gsettings key '%s' change", key_);
+	}
     }
 
     unsigned short  previewScaleLimit() const
@@ -88,10 +118,17 @@ class Env
     bool   _convertSRGB;
     bool   _rotate;
     std::string  _font;
+
+    GSettings* _settings;
 };
 std::unique_ptr<Env>  Env::_instance = NULL;
 std::once_flag  Env::_once;
 
+void on_settings_changed(GSettings* settings_, const gchar* key_, gpointer this_)
+{
+    DBG_LOG("gsettings change on '%s'", key_);
+    ((Env*)this_)->update(settings_, key_);
+}
 
 
 const unsigned char  sRGB_IEC61966_2_1[] = {
