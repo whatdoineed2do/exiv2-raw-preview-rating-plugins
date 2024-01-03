@@ -12,6 +12,8 @@
 #include <string>
 #include <sstream>
 
+#include <glib.h>
+
 namespace  Exiv2GdkPxBufLdr
 {
 const char* const  G_DOMAIN = "gdk-pixbuf.exiv2-rawpreview";
@@ -28,8 +30,8 @@ class DbgHlpr
 	return *DbgHlpr::_instance;
     }
 
-    DbgHlpr();
-    ~DbgHlpr() { close(_fd); }
+    DbgHlpr() = default;
+    ~DbgHlpr() = default;
 
     DbgHlpr(const DbgHlpr&) = delete;
     DbgHlpr& operator=(const DbgHlpr&) = delete;
@@ -39,34 +41,28 @@ class DbgHlpr
     void  log(const char* file_, const int line_, Args&&...args_)
     {
 	std::ostringstream  dump;
-	dump << _pid << ": " << file_ << ", " << line_ << ": ";
-	_log(file_, line_, dump, std::forward<Args>(args_)...);
-	dump << '\n';
+	dump << file_ << ", " << line_ << ": ";
+	_log(dump, std::forward<Args>(args_)...);
 
-	const std::string&&  what = dump.str();
-	write(_fd, what.c_str(), what.length());
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", dump.str().c_str());
     }
 
   private:
     static std::unique_ptr<DbgHlpr>  _instance;
     static std::once_flag  _once;
 
-    int  _fd;
-    const pid_t  _pid;
-
-
     template<typename T>
-    void _log(const char*, const int, std::ostringstream& os_, T&& arg_)
+    void _log(std::ostringstream& os_, T&& arg_)
     {
 	os_ << arg_;
     }
 
     // fake recursive variadic function
     template<typename T, typename ... Args>
-    void  _log(const char* file_, const int line_, std::ostringstream& os_, T&& arg_, Args&&...args_)
+    void  _log(std::ostringstream& os_, T&& arg_, Args&&...args_)
     {
 	os_ << arg_;
-	_log(file_, line_, os_, std::forward<Args>(args_)...);
+	_log(os_, std::forward<Args>(args_)...);
     }
 
 };
@@ -77,7 +73,6 @@ class DbgHlpr
 #else
   #define DBG_LOG(...) 
 #endif
-
 }
 
 #endif
