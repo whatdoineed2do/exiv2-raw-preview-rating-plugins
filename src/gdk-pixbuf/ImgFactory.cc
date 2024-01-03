@@ -1141,22 +1141,19 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
                     const char*  key;
                     bool  ckunmod;
                 };
-                static const _ColrSpc colrSpcs[] = {
-                    { "Exif.Nikon3.ColorSpace", true  },
-                    { "Exif.Canon.ColorSpace",  false },
-                    { NULL, false }
+                static const std::array colrSpcs {
+                    _ColrSpc{ "Exif.Nikon3.ColorSpace", true  },
+                    _ColrSpc{ "Exif.Canon.ColorSpace",  false }
                 };
 
 		/* no embedded ICC so can't do any conversion
 		 * image if its not a Nikon RAW with the colr space set
 		 */
 
-                const _ColrSpc*  pcs = colrSpcs;
-                while (pcs->key)
-                {
-                    if ( (d = exif_.findKey(Exiv2::ExifKey(pcs->key)) ) == exif_.end()) {
-                        ++pcs;
-                        continue;
+		std::any_of(colrSpcs.begin(), colrSpcs.end(), [&convert, &d, &exif_, &magick, this](const auto& cs_)
+		{
+                    if ( (d = exif_.findKey(Exiv2::ExifKey(cs_.key)) ) == exif_.end()) {
+			return false;
                     }
                     const long  l = 
 #if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
@@ -1165,7 +1162,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 			d->toLong();
 #endif
 
-		    DBG_LOG("found color space ", pcs->key, " val=", l);
+		    DBG_LOG("found color space ", cs_.key, " val=", l);
 
                     /* check if this is as-shot with no further mods (ie 
                      * colorspace conv)
@@ -1175,7 +1172,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 		    {
                         bool  doit = true;
 
-                        if (pcs->ckunmod) {
+                        if (cs_.ckunmod) {
                             // it was shot as aRGB - check the orig vs mod times
                             std::string  orig;
                             std::string  mod;
@@ -1198,8 +1195,8 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
                             magick.profile("ICC", _argbICC);
                         }
 		    }
-                    break;
-                }
+                    return true;
+                });
 	    }
 	}
         else
