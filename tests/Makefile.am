@@ -3,13 +3,12 @@ ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 AM_CXXFLAGS = -Wno-deprecated -fpermissive -Wconversion-null -Wno-write-strings
 AM_LDFLAGS = 
 
-
 EXTRA_PROGRAMS = gpixbuf gpixbufldr leak magick  magick-omp xmp
 
 leak_CPPFLAGS = $(AM_CPPFLAGS)
-leak_CXXFLAGS = $(AM_CXXFLAGS) $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -I../src/gdk-pixbuf
-leak_LDFLAGS = $(AM_LDFLAGS) $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
-leak_LDADD = ../src/gdk-pixbuf/.libs/libexiv2_pixbuf_loader.la
+leak_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS) $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -I../src/gdk-pixbuf
+leak_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
+leak_LDADD = ../src/gdk-pixbuf/.libs/libpixbufloader-exiv2-rawpreview.la
 leak_SOURCES = \
     leak.cc
 

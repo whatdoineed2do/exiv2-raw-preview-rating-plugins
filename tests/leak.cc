@@ -104,9 +104,9 @@ static void  _previewImage(Exiv2::PreviewManager&  exvprldr_, Exiv2::DataBuf& db
 	dbuf_ = preview.copy();
     }
     
-    Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(
-				    mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : dbuf_.pData_, 
-				    mgkblob.length() > 0 ? mgkblob.length() : dbuf_.size_ );
+    Exiv2::Image::UniquePtr  upd = Exiv2::ImageFactory::open(
+				    mgkblob.length() > 0 ? (const unsigned char*)mgkblob.data() : dbuf_.c_str(0), 
+				    mgkblob.length() > 0 ? mgkblob.length() : dbuf_.size() );
     bio_.transfer(upd->io());
 }
 
@@ -206,7 +206,7 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
 
 	info.fontPointsize(18);
 	info.annotate(exif.str(), Magick::Geometry("+10+10"), MagickCore::WestGravity);
-	info.opacity(65535/3.0);
+	//info.opacity(65535/3.0);
 	info.transparent("grey");
 
 	magick.composite(info,
@@ -222,11 +222,11 @@ static void  _previewImage(Exiv2::PreviewManager&&  exvprldr_, PrevwBuf&  prevwB
     {
 	prevwBuf_.exiv2.dbuf = preview.copy();
 
-	prsz = prevwBuf_.exiv2.dbuf.size_;
-	pr = prevwBuf_.exiv2.dbuf.pData_;
+	prsz = prevwBuf_.exiv2.dbuf.size();
+	pr = prevwBuf_.exiv2.dbuf.c_str(0);
     }
     
-    Exiv2::Image::AutoPtr  upd = Exiv2::ImageFactory::open(pr, prsz);
+    Exiv2::Image::UniquePtr  upd = Exiv2::ImageFactory::open(pr, prsz);
     prevwBuf_.exiv2.memio.transfer(upd->io());
 }
 
@@ -256,7 +256,7 @@ int main(int argc, char* const argv[])
 		Exiv2::DataBuf dbuf;
 		Exiv2::MemIo  rawio;
 		{
-		    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(filename);
+		    Exiv2::Image::UniquePtr  orig = Exiv2::ImageFactory::open(filename);
 		    if (orig.get() == NULL) {
 			cout << filename << ": no such file" << endl;
 			continue;
@@ -276,7 +276,7 @@ int main(int argc, char* const argv[])
 		//rawio.munmap();
 		delete []  buf;
 	    }
-	    catch (const Exiv2::AnyError& e)
+	    catch (const Exiv2::Error& e)
 	    {
 		cout << filename << ":  unable to extract preview/reset exif - " << e << endl;
 		continue;
@@ -293,7 +293,7 @@ int main(int argc, char* const argv[])
 		{
 		    static const string  mimeNEF = "image/x-nikon-nef";
 
-		    Exiv2::Image::AutoPtr  orig = Exiv2::ImageFactory::open(filename);
+		    Exiv2::Image::UniquePtr  orig = Exiv2::ImageFactory::open(filename);
 		    orig->readMetadata();
 		    cout << filename << ": x=" << orig->pixelWidth() << " y=" << orig->pixelHeight() << "  " << orig->mimeType() << endl;
 
@@ -349,7 +349,7 @@ int main(int argc, char* const argv[])
 
 		//delete []  buf;
 	    }
-	    catch (const Exiv2::AnyError& e)
+	    catch (const Exiv2::Error& e)
 	    {
 		cout << filename << ":  unable to extract preview/reset exif - " << e << endl;
 		continue;

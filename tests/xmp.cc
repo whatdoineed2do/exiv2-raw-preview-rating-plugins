@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
     const char*  filename = argv[1];
     try
     {
-        Exiv2::Image::AutoPtr  img = Exiv2::ImageFactory::open(filename);
+        Exiv2::Image::UniquePtr  img = Exiv2::ImageFactory::open(filename);
 
         img->readMetadata();
 	Exiv2::XmpData&  xmpData = img->xmpData();
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
         }
         cout << "after:\n" << xmpData << endl;
     }
-    catch(Exiv2::AnyError & e) {
+    catch(Exiv2::Error & e) {
 	std::cout << "Caught Exiv2 exception '" << e << "'\n";
 	return -1;
     }
