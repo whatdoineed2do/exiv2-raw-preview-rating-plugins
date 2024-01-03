@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema path="/org/gtk/gdk-pixbuf/exiv2-rawpreview/" id="org.gtk.gdk-pixbuf.exiv2-rawpreview">
+    <key name="font" type="s">
+      <default>''</default>
+      <summary>Font</summary>
+      <description>The font to be used for content.</description>
+    </key>
+    <key name="scale-limit" type="i">
+      <default>1632</default>
+      <summary>Scale larger preview images to this size</summary>
+      <description>Limit the size of the preview image(s) found to this size when choising preview to extract and present to pixbuf loader</description>
+    </key>
+    <key name="auto-orientate" type="b">
+      <default>true</default>
+      <summary>Auto orientate based on EXIF</summary>
+      <description>Auto orientate image based on EXIF</description>
+    </key>
+    <key name="convert-srgb" type="b">
+      <default>false</default>
+      <summary>Convert sRGB colorspace</summary>
+      <description>Whether to convert image to sRGB colorspace</description>
+    </key>
+  </schema>
+</schemalist>

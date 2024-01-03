@@ -23,6 +23,8 @@ PKG_PROG_PKG_CONFIG
 AM_CPPFLAGS="-Wall"
 AC_SUBST([AM_CPPFLAGS])
 
+GLIB_GSETTINGS
+
 AC_ARG_ENABLE(eog,
         AS_HELP_STRING([--disable-eog],[do not build EOG exif rating plugin]),
         [ use_eog="${enableval}" ], [ use_eog=yes ] )
@@ -105,5 +107,6 @@ AC_OUTPUT([
     src/eog-plugin/Makefile
     src/eom-plugin/Makefile
     src/gdk-pixbuf/Makefile
+    src/gdk-pixbuf/data/Makefile
     tests/Makefile
 ])
