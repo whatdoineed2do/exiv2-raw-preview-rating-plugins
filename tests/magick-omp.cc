@@ -33,7 +33,17 @@ void  _magick(const char* file_)
     magick.filterType(Magick::LanczosFilter);
     magick.quality(70);
     if ( (env = getenv("SET_MAGICK_RESOURCE_LIMIT")) ) {
-	Magick::ResourceLimits::thread(4);
+	int  v = atol(env);
+        std::cout << "SET_MAGICK_RESOURCE_LIMIT=" << env << "\n";
+	switch (v) {
+	  case -1:
+	    break;
+	  case 0:
+	    Magick::ResourceLimits::thread(omp_get_num_procs());
+	    break;
+	  default:
+	    Magick::ResourceLimits::thread(v);
+	}
     }
     Magick::Geometry  g("x4288");
     {
