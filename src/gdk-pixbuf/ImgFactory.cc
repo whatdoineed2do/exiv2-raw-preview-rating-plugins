@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include <array>
 #include <functional>
 #include <chrono>
 #include <thread>
@@ -1234,7 +1235,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
     {
 
-	static const Exiv2::ExifKey  etags[] = {
+	static const std::array  etags {
 	    Exiv2::ExifKey("Exif.Image.Model"),
 
 	    Exiv2::ExifKey("Exif.Image.DateTime"), 
@@ -1267,35 +1268,36 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
             DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
 
 	std::ostringstream  exif;
-	for (size_t i=0; i<sizeof(etags)/sizeof(Exiv2::ExifKey); i++) {
-	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etags[i]);
+	std::for_each(etags.begin(), etags.end(), [&exif, &exif_, &width_, &height_](const auto& etag) {
+	    Exiv2::ExifData::const_iterator  e = exif_.findKey(etag);
 	    if (e == exif_.end()) {
-		exif << "[N/F:" << etags[i].key() << "]";
-		continue;
+		exif << "[N/F:" << etag.key() << "]";
+		return;
 	    }
 
 	    exif << *e;
-	    switch (i)
 	    {
-		case 0:
+		if (etag.key() == "Exif.Image.Model")
 		{
 		    exif << "  " << width_ << "x" << height_ << "\n";
 		    Exiv2::ExifData::const_iterator  ln = lensName(exif_);
 		    if (ln != exif_.end()) { 
 			exif << ln->print(&exif_) << "\n";
 		    }
-		} break;
-
-		case 1:
+		}
+		else if (etag.key() == "Exif.Image.DateTime")
+		{
 		    exif << '\n';
-		    break;
-
-		case 5:
+		}
+		else if (etag.key() == "Exif.Photo.ISOSpeedRatings")
+		{
 		    exif << "ISO";
-		default:
+		}
+		else {
 		    exif << "  ";
+		}
 	    }
-	}
+	});
 
 	std::ostringstream transcolour;
 	transcolour << "graya(" << env.transparency() << "%)";
