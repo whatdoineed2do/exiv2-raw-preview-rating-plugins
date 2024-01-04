@@ -60,6 +60,23 @@ if test "x$use_eom" != xno ; then
 fi
 AM_CONDITIONAL([HAVE_EOM], [test "x$use_eom" = xyes])
 
+
+AC_ARG_ENABLE(gtk,
+        AS_HELP_STRING([--disable-gtk],[do not build tests with GTK]),
+        [ use_gtk="${enableval}" ], [ use_gtk=yes ] )
+
+if test "x$use_gtk" != xno ; then
+        PKG_CHECK_MODULES(GTK, [gtk+-3.0], [ use_gtk=yes ], [ use_gtk=no ])
+        AH_TEMPLATE([HAVE_GTK], [build test with GTK ])
+        AS_IF([test "x$use_gtk" = "xyes"], [
+                AC_DEFINE([HAVE_GTK])
+                AC_SUBST(GTK_CFLAGS)
+                AC_SUBST(GTK_LIBS)
+           ])
+fi
+AM_CONDITIONAL([HAVE_GTK], [test "x$use_gtk" = xyes])
+
+
 if test "x$need_peas" != xno ; then
 PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
 fi

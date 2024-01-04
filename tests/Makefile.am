@@ -36,10 +36,9 @@ magick_omp_LDFLAGS = $(AM_LDFLAGS) $(IMAGEMAGICK_LIBS)
 magick_omp_SOURCES = \
     magick-omp.cc 
 
-# dirty...
 gpixbufldr_CPPFLAGS = $(AM_CPPFLAGS)
-gpixbufldr_CFLAGS = $(AM_CXXFLAGS) $(shell pkg-config --cflags gtk+-3.0) $(GDKPIXBUF_CFLAGS)
-gpixbufldr_LDFLAGS = $(AM_LDFLAGS) $(shell pkg-config --libs gtk+-3.0) $(GDKPIXBUF_LIBS)
+gpixbufldr_CFLAGS = $(AM_CXXFLAGS) $(GTK_CFLAGS)  $(GDKPIXBUF_CFLAGS)
+gpixbufldr_LDFLAGS = $(AM_LDFLAGS) $(GTK_LIBS) $(GDKPIXBUF_LIBS)
 gpixbufldr_SOURCES = \
     gpixbufldr.c 
 
