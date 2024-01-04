@@ -1231,7 +1231,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	    // finally, try to convert to srgb
 	    try
 	    {
-                DBG_LOG("converting to sRGB");
+		g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  converting to sRGB");
 		magick.profile("ICC", _srgbICC);
 		magick.iccColorProfile(_srgbICC);
 	    }
@@ -1245,18 +1245,6 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
     {
-
-	static const std::array  etags {
-	    Exiv2::ExifKey("Exif.Image.Model"),
-
-	    Exiv2::ExifKey("Exif.Image.DateTime"), 
-
-	    Exiv2::ExifKey("Exif.Photo.FocalLength"),
-	    Exiv2::ExifKey("Exif.Photo.ExposureTime"), 
-	    Exiv2::ExifKey("Exif.Photo.FNumber"), 
-	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
-	};
-
 	if (!magick.isValid()) {
             DBG_LOG("loading from preview for scaling");
 	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
@@ -1277,6 +1265,24 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	magick.resize(Magick::Geometry(tmp));
             const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
             DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
+    }
+
+    {
+	static const std::array  etags {
+	    Exiv2::ExifKey("Exif.Image.Model"),
+
+	    Exiv2::ExifKey("Exif.Image.DateTime"),
+
+	    Exiv2::ExifKey("Exif.Photo.FocalLength"),
+	    Exiv2::ExifKey("Exif.Photo.ExposureTime"),
+	    Exiv2::ExifKey("Exif.Photo.FNumber"),
+	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
+	};
+
+	if (!magick.isValid()) {
+            DBG_LOG("loading from for annotating");
+	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
+	}
 
 	std::ostringstream  exif;
 	std::for_each(etags.begin(), etags.end(), [&exif, &exif_, &width_, &height_](const auto& etag) {
