@@ -9,6 +9,7 @@
 
 #include "DbgHlpr.h"
 #include "Buf.h"
+#include "ColorProfiles.h"
 
 
 namespace  Exiv2GdkPxBufLdr
@@ -104,6 +105,7 @@ class ImgFactory
   private:
     ImgFactory();
 
+    const Exiv2GdkPxBufLdr::ColorProfiles  _profiles;
     const Magick::Blob  _argbICC;
     const Magick::Blob  _srgbICC;
 

@@ -12,6 +12,7 @@ libpixbufloader_exiv2_rawpreview_la_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) -a
 libpixbufloader_exiv2_rawpreview_la_SOURCES = \
 	version.cc \
 	DbgHlpr.cc \
+	ColorProfiles.cc \
 	ImgFactory.cc \
 	exiv2_pixbuf_loader.cc 
 
