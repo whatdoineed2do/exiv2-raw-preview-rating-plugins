@@ -13,6 +13,8 @@ libpixbufloader_exiv2_rawpreview_la_SOURCES = \
 	version.cc \
 	DbgHlpr.cc \
 	ColorProfiles.cc \
+	Env.cc \
+	ImgXfrm.cc \
 	ImgFactory.cc \
 	exiv2_pixbuf_loader.cc 
 
