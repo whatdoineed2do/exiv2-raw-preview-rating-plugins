@@ -2,7 +2,6 @@
 #define IMG_FACTORY_H
 
 #include <sys/types.h>
-#include <stdio.h>
 #include <string>
 
 #include <exiv2/exiv2.hpp>
@@ -93,7 +92,6 @@ class ImgFactory
 
     static ImgFactory&  instance();
 
-    ImgFactory();
     ~ImgFactory();
 
     ImgFactory(ImgFactory&) = delete;
@@ -104,8 +102,7 @@ class ImgFactory
     ImgFactory::Buf&  create(const unsigned char* buf_, ssize_t bufsz_, ImgFactory::Buf&, std::string& mimeType_);
 
   private:
-    static std::unique_ptr<ImgFactory>  _instance;
-    static std::once_flag  _once;
+    ImgFactory();
 
     const Magick::Blob  _argbICC;
     const Magick::Blob  _srgbICC;

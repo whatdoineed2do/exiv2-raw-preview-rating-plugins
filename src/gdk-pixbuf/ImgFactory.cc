@@ -15,10 +15,6 @@
 
 namespace  Exiv2GdkPxBufLdr
 {
-std::unique_ptr<ImgFactory>  ImgFactory::_instance;
-std::once_flag  ImgFactory::_once;
-
-
 const gchar* const  KEY_FONT = "font";
 const gchar* const  KEY_FONT_SIZE = "font-size";
 const gchar* const  KEY_TRANSPARENCY = "transparency";
@@ -37,10 +33,8 @@ class Env
 
     static Env&  instance()
     {
-	std::call_once(Env::_once, [](){
-	    Env::_instance = std::make_unique<Env>();
-	});
-	return *Env::_instance;
+	static Env  env;
+	return env;
     }
 
     Env() 
@@ -138,9 +132,6 @@ class Env
     { return _transparency; }
     
   private:
-    static std::unique_ptr<Env>  _instance;
-    static std::once_flag  _once;
-
     unsigned short  _previewScaleLimit;
     bool   _convertSRGB;
     bool   _rotate;
@@ -151,8 +142,6 @@ class Env
     GSettings* _settings;
     gulong  _changesig;
 };
-std::unique_ptr<Env>  Env::_instance = NULL;
-std::once_flag  Env::_once;
 
 void on_settings_changed(GSettings* settings_, const gchar* key_, gpointer this_)
 {
@@ -949,10 +938,8 @@ const unsigned char  NKAdobe[] = {
 
 ImgFactory&  ImgFactory::instance()
 {
-    std::call_once(ImgFactory::_once, [](){
-	ImgFactory::_instance = std::make_unique<ImgFactory>();
-    });
-    return *ImgFactory::_instance;
+    static ImgFactory  instance;
+    return instance;
 }
 
 
