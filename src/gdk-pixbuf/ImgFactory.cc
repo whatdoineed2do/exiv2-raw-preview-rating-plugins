@@ -960,9 +960,9 @@ ImgFactory::ImgFactory()
     : _argbICC(NKAdobe, sizeof(NKAdobe)),
       _srgbICC(sRGB_IEC61966_2_1, sizeof(sRGB_IEC61966_2_1))
 {
+    Magick::InitializeMagick("");
     DBG_LOG("OMP: cpus=", omp_get_num_procs(), " threads=", omp_get_max_threads(), "  setting resource limits to #threads");
     Magick::ResourceLimits::thread(std::thread::hardware_concurrency());
-    Magick::InitializeMagick("");
 }
 
 ImgFactory::~ImgFactory()
@@ -1081,6 +1081,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	magick.resize(Magick::Geometry(tmp));
             const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
             DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  scaled in %f", elapsed.count());
     }
 
     if (env.rotate() && 
