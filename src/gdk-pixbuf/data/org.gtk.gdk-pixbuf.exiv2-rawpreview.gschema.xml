@@ -6,6 +6,11 @@
       <summary>Font</summary>
       <description>The font to be used for EXIF data on image overlay</description>
     </key>
+    <key name="font-size" type="i">
+      <default>16</default>
+      <summary>Font size</summary>
+      <description>The font size to be used for EXIF data on image overlay</description>
+    </key>
     <key name="transparency" type="i">
       <default>50</default>
       <summary>Transparecny value</summary>

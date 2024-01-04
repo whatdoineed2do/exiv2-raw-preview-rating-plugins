@@ -20,6 +20,7 @@ std::once_flag  ImgFactory::_once;
 
 
 const gchar* const  KEY_FONT = "font";
+const gchar* const  KEY_FONT_SIZE = "font-size";
 const gchar* const  KEY_TRANSPARENCY = "transparency";
 const gchar* const  KEY_SCALE_LIMIT = "scale-limit";
 const gchar* const  KEY_CONVERT_SRGB = "convert-srgb";
@@ -50,6 +51,7 @@ class Env
           */
 	  _convertSRGB(false),
           _rotate(true),
+	  _fontsize(16),
 	  _settings(NULL)
     {
 	const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
@@ -61,14 +63,16 @@ class Env
 
 	update(_settings, KEY_SCALE_LIMIT);
 	update(_settings, KEY_FONT);
+	update(_settings, KEY_FONT_SIZE);
 	update(_settings, KEY_TRANSPARENCY);
 	update(_settings, KEY_CONVERT_SRGB);
 	update(_settings, KEY_AUTO_ORIENTATE);
 
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s'  %s=%d  %s=%s  %s=%s",
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s' %s=%d  %s=%d  %s=%s  %s=%s",
 	   schema_id,
            KEY_SCALE_LIMIT, _previewScaleLimit,
 	   KEY_FONT, _font.c_str(),
+	   KEY_FONT_SIZE, _fontsize,
 	   KEY_TRANSPARENCY, _transparency,
 	   KEY_CONVERT_SRGB, _convertSRGB ? "true" : "false",
 	   KEY_AUTO_ORIENTATE, _rotate ? "true" : "false");
@@ -98,6 +102,12 @@ class Env
 	    if      (_transparency > 100)  _transparency = 100;
 	    else if (_transparency < 0)    _transparency = 0;
 	}
+	else if (g_strcmp0(key_, KEY_FONT_SIZE) == 0) {
+	    int  fontsize = g_settings_get_int(settings_, key_);
+	    if (fontsize > 0) {
+	        _fontsize = fontsize;
+	    }
+	}
 	else if (g_strcmp0(key_, KEY_FONT) == 0) {
 	    gchar*  font = g_settings_get_string(settings_, key_);
 	    _font = font;
@@ -121,6 +131,9 @@ class Env
     const std::string&  font() const
     { return _font; }
 
+    unsigned short  fontsize() const
+    { return _fontsize; }
+
     unsigned short  transparency() const
     { return _transparency; }
     
@@ -132,6 +145,7 @@ class Env
     bool   _convertSRGB;
     bool   _rotate;
     std::string  _font;
+    unsigned short  _fontsize;
     unsigned short  _transparency;
 
     GSettings* _settings;
@@ -1305,7 +1319,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	}
 	info.fillColor("black");
 	info.strokeColor("none");
-        info.fontPointsize(18);
+        info.fontPointsize(env.fontsize());
 	try
 	{
 	    info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
