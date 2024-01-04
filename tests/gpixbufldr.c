@@ -76,12 +76,12 @@ main (int argc, char *argv[])
     guint8* buffer = NULL;
     gsize length = 0;
     GdkPixbufLoader *loader = NULL;
+    GdkPixbuf *pixbuf = NULL;
 #if HAVE_GTK
-    GdkPixbuf *pixbuf;
     GtkWidget *window;
     GtkWidget *image;
 #endif
-    GError**  err_ = NULL;
+    GError*  err = NULL;
 
     const char*  file = NULL;
     const char*  mime_type = NULL;
@@ -125,11 +125,11 @@ main (int argc, char *argv[])
     if (mime_type)
     {
         printf("requesting loader for mimetype=%s on %s\n", mime_type, file);
-        loader = gdk_pixbuf_loader_new_with_mime_type(mime_type, err_);
-        if (err_ && *err_) {
-            g_error_free(*err_);
-            *err_ = NULL;
-            printf("no known loader for explicit mimetype, defaulting\n");
+        loader = gdk_pixbuf_loader_new_with_mime_type(mime_type, &err);
+        if (err) {
+            printf("no known loader for explicit mimetype=%s, defaulting - %s\n", mime_type, err->message);
+            g_error_free(err);
+            err = NULL;
             loader = gdk_pixbuf_loader_new();
         }
     }
@@ -138,7 +138,7 @@ main (int argc, char *argv[])
 	GdkPixbufFormat* info = gdk_pixbuf_get_file_info(file, NULL, NULL);
 	gchar*  name = info ? gdk_pixbuf_format_get_name(info) : NULL;
 	gchar**  mime_types = info ? gdk_pixbuf_format_get_mime_types(info) : NULL;
-        printf("requesting default loader on %s (%s)\n", file, name);
+        printf("requesting default loader on %s (%s)\n", file, name ? name : "<nul>");
 
         if (mime_types) {
             printf("Supported MIME types:\n");
@@ -153,16 +153,22 @@ main (int argc, char *argv[])
 
 	g_free(name);
     }
-    gdk_pixbuf_loader_write (loader, buffer, length, NULL);
-    gdk_pixbuf_loader_close(loader, err_);
+    if (!gdk_pixbuf_loader_write(loader, buffer, length, &err) && err) {
+	printf("loader failure %s - %s\n", file, err->message);
+	g_error_free(err);
+    }
+    if (!gdk_pixbuf_loader_close(loader, &err) && err) {
+	printf("loader clossure failed %s - %s\n", file, err->message);
+	g_error_free(err);
+    }
 
-    if (usex)
+    pixbuf = gdk_pixbuf_loader_get_pixbuf (loader);
+
+    if (usex && pixbuf)
     {
 #if HAVE_GTK
 	signal(SIGINT, _handle_signal);
 	gtk_init (&argc, &argv);
-
-	pixbuf = gdk_pixbuf_loader_get_pixbuf (loader);
 
 	window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 	image = gtk_image_new_from_pixbuf (pixbuf);
