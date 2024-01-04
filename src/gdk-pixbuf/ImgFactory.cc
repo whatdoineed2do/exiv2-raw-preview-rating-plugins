@@ -1306,7 +1306,17 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 	info.fillColor("black");
 	info.strokeColor("none");
         info.fontPointsize(18);
-	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
+	try
+	{
+	    info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
+	}
+	catch (const Magick::ErrorType& ex)
+	{
+	    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unable to use specified font, attempting with default - %s", ex.what());
+	    // font releated exception...
+	    info.font("");
+	    info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
+	}
         info.trim();
         info.border();
 #if MagickLibInterface == 5  // IM 6.x
