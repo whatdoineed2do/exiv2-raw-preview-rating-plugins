@@ -57,7 +57,7 @@ class Env
 	const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
 
 
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "update gdk-pixbuf via: 'gsettings list-recursively %s' and 'gsettings set %s %s %d'", schema_id, schema_id, KEY_SCALE_LIMIT, _previewScaleLimit);
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "see configurable options via: 'gsettings list-recursively %s'", schema_id);
 
 	_settings = g_settings_new(schema_id);
 
