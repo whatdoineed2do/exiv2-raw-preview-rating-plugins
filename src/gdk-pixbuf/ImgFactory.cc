@@ -1059,6 +1059,30 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
     Magick::Image  magick;
 
+    if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
+    {
+	if (!magick.isValid()) {
+            DBG_LOG("loading from preview for scaling");
+	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
+	}
+
+	magick.filterType(Magick::LanczosFilter);
+	magick.quality(70);
+	char  tmp[8];  // its a short, can't be more than 65535
+	const int  len = snprintf(tmp, sizeof(tmp), " %d ", PREVIEW_LIMIT);
+        if (magick.rows() < magick.columns()) {
+            tmp[len-1] = 'x';
+        }
+        else {
+            tmp[0] = 'x';
+        }
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  scaling preview #%d to %s", i, tmp);
+            const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
+	magick.resize(Magick::Geometry(tmp));
+            const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
+            DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
+    }
+
     if (env.rotate() && 
         (d = exif_.findKey(Exiv2::ExifKey("Exif.Image.Orientation")) ) != exif_.end()) 
     {
@@ -1084,7 +1108,9 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
 
         if (orientation != 0) {
             DBG_LOG("rotating=", orientation);
-            magick.read(Magick::Blob(preview.pData(), preview.size()) );
+	    if (!magick.isValid()) {
+		magick.read(Magick::Blob(preview.pData(), preview.size()) );
+	    }
             magick.rotate(orientation);
         }
     }
@@ -1243,30 +1269,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     }
 
 
-    if (pp->width_ > PREVIEW_LIMIT || pp->height_ > PREVIEW_LIMIT)
-    {
-	if (!magick.isValid()) {
-            DBG_LOG("loading from preview for scaling");
-	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
-	}
-
-	magick.filterType(Magick::LanczosFilter);
-	magick.quality(70);
-	char  tmp[8];  // its a short, can't be more than 65535
-	const int  len = snprintf(tmp, sizeof(tmp), " %d ", PREVIEW_LIMIT);
-        if (magick.rows() < magick.columns()) {
-            tmp[len-1] = 'x';
-        }
-        else {
-            tmp[0] = 'x';
-        }
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  scaling preview #%d to %s", i, tmp);
-            const std::chrono::time_point<std::chrono::system_clock>  start = std::chrono::system_clock::now();
-	magick.resize(Magick::Geometry(tmp));
-            const std::chrono::duration<double>  elapsed = std::chrono::system_clock::now() - start;
-            DBG_LOG("scaling preview=", i, " secs=", elapsed.count());
-    }
-
+    // annotate
     {
 	static const std::array  etags {
 	    Exiv2::ExifKey("Exif.Image.Model"),
