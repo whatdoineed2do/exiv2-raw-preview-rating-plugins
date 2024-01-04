@@ -27,3 +27,11 @@ stamp-h1
 .deps
 .libs
 src/eog-plugin/exiv2-rating.plugin
+*.gschema.valid
+tests/gpixbuf
+tests/gpixbufldr
+tests/leak
+tests/magick
+tests/magick-omp
+tests/xmp
+
