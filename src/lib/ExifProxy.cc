@@ -188,6 +188,7 @@ bool  ExifProxy::fliprating()
     catch (const std::exception& ex)
     {
 	g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to update XMP rating - %s", _file.c_str(), ex.what());
+	flipped = false;
     }
     return flipped;
 }
