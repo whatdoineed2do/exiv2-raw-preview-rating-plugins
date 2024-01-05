@@ -83,7 +83,7 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 #endif
 
 	    default:
-	        g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to set XMP rating - (%d) %s", fpath_, e.code(), e.what());
+	        g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to set XMP rating - (%d) %s", fpath_, (int)e.code(), e.what());
 	}
     }
 
