@@ -54,3 +54,12 @@ jobs:
         make clean
         make
 
+    - name: Build with debug
+      run: |
+        autoreconf --install
+        autoconf
+        git checkout src/Makefile.am
+        ./configure --enable-debug
+        make clean
+        make
+
