@@ -19,7 +19,7 @@ std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_)
     return os_;
 }
 
-ExifProxy::ExifProxy() : _mtime(0), _xmp(NULL), _xmpkpos(NULL)
+ExifProxy::ExifProxy(const char* logdomain_) : _logdomain(logdomain_), _mtime(0), _xmp(NULL), _xmpkpos(NULL)
 {
 #ifdef EOG_PLUGIN_XMP_INIT_LOCK
     // not thread safe!!!!  need to initialize XMPtoolkit
@@ -83,7 +83,7 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
 #endif
 
 	    default:
-	        g_printerr("%s: failed to set XMP rating - (%d) %s\n", fpath_, e.code(), e.what());
+	        g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to set XMP rating - (%d) %s", fpath_, e.code(), e.what());
 	}
     }
 
@@ -187,7 +187,7 @@ bool  ExifProxy::fliprating()
     }
     catch (const std::exception& ex)
     {
-	g_printerr("%s: failed to update XMP rating - %s\n", _file.c_str(), ex.what());
+	g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to update XMP rating - %s", _file.c_str(), ex.what());
     }
     return flipped;
 }

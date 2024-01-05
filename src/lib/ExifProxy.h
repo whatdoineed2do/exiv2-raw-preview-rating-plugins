@@ -70,7 +70,7 @@ class ExifProxy
     };
 #endif
 
-    ExifProxy();
+    ExifProxy(const char* logdomain_="exiv2-rating-ExifProxy");
     virtual ~ExifProxy() = default;
 
     ExifProxy(const ExifProxy&) = delete;
@@ -105,6 +105,8 @@ class ExifProxy
   private:
     static const std::string          _XMPKEY;
     static const Exiv2::XmpTextValue  _XMPVAL;
+
+    const std::string  _logdomain;
 
     time_t  _mtime;
 
