@@ -10,11 +10,9 @@ const Exiv2::XmpTextValue  ExifProxy::_XMPVAL { Exiv2::XmpTextValue("5") };
 
 std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_) 
 {
-    for (Exiv2::XmpData::const_iterator md = data_.begin();
-         md != data_.end(); ++md) 
-    {
-        os_ << "{ " << md->key() << " " << md->typeName() << " " << md->count() << " " << md->value() << " }";
-    }
+    std::for_each(data_.begin(), data_.end(), [&os_](const auto& e) {
+        os_ << "{ " << e.key() << " " << e.typeName() << " " << e.count() << " " << e.value() << " }";
+    });
 
     return os_;
 }
@@ -170,19 +168,16 @@ bool  ExifProxy::fliprating()
 	tmput.modtime = _mtime;
 	utime(_file.c_str(), &tmput);
 
-	ExifProxy::History::iterator  h;
-	for (h=_history.begin(); h!=_history.end(); ++h)
-	{
-	    if (h->f == _file) {
-		break;
-	    }
-	}
-	if (h != _history.end()) {
-	    _history.erase(h);
-	}
-	else
-	{
+	ExifProxy::History::iterator  h =
+	    std::find_if( _history.begin(), _history.end(), [this](const auto& e){
+		return e.f == _file;
+	    });
+
+	if (h == _history.end()) {
 	    _history.push_back(ExifProxy::HistoryEvnt(_file, _img->exifData(), r));
+	}
+	else {
+	    _history.erase(h);
 	}
     }
     catch (const std::exception& ex)
