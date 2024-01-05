@@ -3,6 +3,7 @@
 #endif
 
 #include "eom-exiv2-rating.h"
+#include <eom/eom-error-message-area.h>
 
 #include <sstream>
 #include <ExifProxy.h>
@@ -29,7 +30,7 @@ enum {
 static void
 statusbar_set_rating(GtkStatusbar *statusbar,
                     EomThumbView *view,
-		    ExifProxy& proxy)
+		    ExifProxy& proxy, bool flipsuccess_)
 {
     if (eom_thumb_view_get_n_selected (view) == 0) {
 	return;
@@ -42,9 +43,9 @@ statusbar_set_rating(GtkStatusbar *statusbar,
     }
 
     const char*  rating = proxy.rating();
-    const char*  info =  rating ? rating : "-/-";
+    const char*  info =  flipsuccess_ ? (rating ? rating : "-/-") : "<error>";
 
-    char  buf[19] = { 0 };
+    char  buf[23] = { 0 };
     snprintf(buf, sizeof(buf), "EXIF rating: %s", info);
     gtk_statusbar_pop (statusbar, 0);
     gtk_statusbar_push (statusbar, 0, buf);
@@ -67,7 +68,7 @@ exiv2rate_cb(GtkAction *action,
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 *plugin->exifproxy);
+			 *plugin->exifproxy, b);
 }
 }
 
@@ -306,5 +307,5 @@ selection_changed_cb (EomThumbView         *view,
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 *plugin->exifproxy);
+			 *plugin->exifproxy, true);
 }
