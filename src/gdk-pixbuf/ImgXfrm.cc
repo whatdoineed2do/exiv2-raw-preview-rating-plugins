@@ -112,7 +112,7 @@ void  ImgXfrmsRGB::_transform() const
 
 	if ((d = exif.findKey(Exiv2::ExifKey("Exif.Image.InterColorProfile")) ) != exif.end()) 
 	{
-	    DBG_LOG("found embedded profile, len=", d->size(), "  known sRGB profile sizes=", profiles.srgb().size, " ", profiles.NKsRGB().size);
+	    DBG_LOG("found embedded profile, len=", d->size(), "  known sRGB profile sizes { sRGB_IEC61966_2_1=", profiles.srgb().size, " Nikon=", profiles.NKsRGB().size, " }");
 	    Exiv2GdkPxBufLdr::Buf  hbuf;
 
 	    /* check that it's not already srgb/nk srgb
@@ -239,7 +239,7 @@ void  ImgXfrmAnnotate::_transform() const
     static const std::array  etags {
 	Exiv2::ExifKey("Exif.Image.Model"),
 
-	Exiv2::ExifKey("Exif.Image.DateTime"),
+	Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"),
 
 	Exiv2::ExifKey("Exif.Photo.FocalLength"),
 	Exiv2::ExifKey("Exif.Photo.ExposureTime"),
@@ -250,6 +250,15 @@ void  ImgXfrmAnnotate::_transform() const
     std::ostringstream  exif;
     std::for_each(etags.begin(), etags.end(), [&exif, this](const auto& etag) {
 	Exiv2::ExifData::const_iterator  e = exifdata.findKey(etag);
+	DBG_LOG("Exif key: ", etag.key(), "value: '",
+	       [&e, this](){
+	           std::ostringstream dump;
+		   if (e==exifdata.end()) {
+		       return std::string("<n/a>");
+		   }
+		   dump << *e;
+		   return dump.str();
+	       }(), "'");
 	if (e == exifdata.end()) {
 	    exif << "[N/F:" << etag.key() << "]";
 	    return;
@@ -265,7 +274,7 @@ void  ImgXfrmAnnotate::_transform() const
 		    exif << ln->print(&exifdata) << "\n";
 		}
 	    }
-	    else if (etag.key() == "Exif.Image.DateTime")
+	    else if (etag.key() == "Exif.Photo.DateTimeOriginal")
 	    {
 		exif << '\n';
 	    }
