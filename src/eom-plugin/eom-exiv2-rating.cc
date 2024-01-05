@@ -7,6 +7,8 @@
 #include <sstream>
 #include <ExifProxy.h>
 
+#define G_LOG_DOMAIN_EOM_EXIV2 "eom:exiv2-rating"
+
 extern "C" {
 
 static void eom_window_activatable_iface_init (EomWindowActivatableInterface *iface);
@@ -151,7 +153,7 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
 	    std::ostringstream  os;
 	    std::for_each(h.begin(), h.end(), [&os](const auto& e) {
 		os << e;
-		g_print("%s\n", os.str().c_str());
+		g_log(G_LOG_DOMAIN_EOM_EXIV2, G_LOG_LEVEL_MESSAGE, "%s", os.str().c_str());
 		os.str("");
 		os.clear();
 	    });
