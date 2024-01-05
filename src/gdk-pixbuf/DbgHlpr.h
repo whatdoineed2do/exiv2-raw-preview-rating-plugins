@@ -72,6 +72,7 @@ class DbgHlpr
 };
 
 #ifndef NDEBUG
+  #warning "debug logging enabled"
   #define DBG_LOG(...) \
     Exiv2GdkPxBufLdr::DbgHlpr::instance().log(__FILE__, __LINE__, __VA_ARGS__)
 #else
