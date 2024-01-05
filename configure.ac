@@ -1,7 +1,7 @@
 AC_PREREQ(2.64)
 
 AC_INIT([exiv2-raw-preview-rating-plugins],
-	[v1.4.1],
+	[v1.4.2.1],
 	[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins/issues],
 	[exiv2-raw-preview-rating-plugins],
 	[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins])
