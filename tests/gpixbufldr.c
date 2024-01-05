@@ -63,6 +63,8 @@ void _usage(char* argv0, int ret)
 	   "\n"
 	   "Notes:\n"
 	   "- specifying 'image/tiff' will most likely not use the exiv2 pixbuf loader\n"
+	   "- 'GDK_PIXBUF_MODULE_FILE=loaders.cache' to define location of development version of 'libpixbufloader-exiv2-rawpreview.so'\n"
+	   "   generate `gdk-pixbuf-query-loaders-64 > loaders.cache` and modify location of libpixbufloader-exiv2-rawpreview.so location to file being tested\n"
 	   "- 'G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview' for pixbuf loader messages\n", basename(argv0));
     exit(ret);
 }
