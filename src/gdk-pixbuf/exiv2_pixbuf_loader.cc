@@ -157,9 +157,6 @@ struct Exiv2PxbufCtx
     GdkPixbufModuleUpdatedFunc  updated_func;
     gpointer                    user_data;
 
-#ifndef NDEBUG
-    int          fd;
-#endif
     GByteArray*  data;
 };
 
