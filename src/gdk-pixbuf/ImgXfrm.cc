@@ -229,7 +229,7 @@ void  ImgXfrmsRGB::_transform() const
 	}
 	catch (const std::exception& ex)
 	{
-	    g_printerr("failed to convert to SRGB - %s\n", ex.what());
+	    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "failed to convert to SRGB - %s", ex.what());
 	}
     }
 }
