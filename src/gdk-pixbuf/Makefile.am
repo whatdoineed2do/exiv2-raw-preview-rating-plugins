@@ -1,12 +1,12 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
-AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS)
+AM_CXXFLAGS = $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -I$(top_srcdir)
 AM_LDFLAGS = $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
 
 
 lib_LTLIBRARIES = libpixbufloader-exiv2-rawpreview.la
 
-libpixbufloader_exiv2_rawpreview_la_CPPFLAGS = $(AM_CPPFLAGS) -DNDEBUG
+libpixbufloader_exiv2_rawpreview_la_CPPFLAGS = $(AM_CPPFLAGS)
 libpixbufloader_exiv2_rawpreview_la_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS)
 libpixbufloader_exiv2_rawpreview_la_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) -avoid-version -module $(no_undefined)
 libpixbufloader_exiv2_rawpreview_la_SOURCES = \

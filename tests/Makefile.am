@@ -1,5 +1,6 @@
 ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 
+AM_CFLAGS = -I$(top_srcdir)
 AM_CXXFLAGS = -Wno-deprecated -fpermissive -Wconversion-null -Wno-write-strings
 AM_LDFLAGS = 
 
@@ -37,7 +38,7 @@ magick_omp_SOURCES = \
     magick-omp.cc 
 
 gpixbufldr_CPPFLAGS = $(AM_CPPFLAGS)
-gpixbufldr_CFLAGS = $(AM_CXXFLAGS) $(GTK_CFLAGS)  $(GDKPIXBUF_CFLAGS)
+gpixbufldr_CFLAGS = $(AM_CFLAGS) $(GTK_CFLAGS)  $(GDKPIXBUF_CFLAGS)
 gpixbufldr_LDFLAGS = $(AM_LDFLAGS) $(GTK_LIBS) $(GDKPIXBUF_LIBS)
 gpixbufldr_SOURCES = \
     gpixbufldr.c 

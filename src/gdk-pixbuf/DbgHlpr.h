@@ -1,6 +1,10 @@
 #ifndef DBG_HLPR_H
 #define DBG_HLPR_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
