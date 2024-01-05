@@ -89,18 +89,11 @@ PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
 PKG_CHECK_VAR([GDKPIXBUF_MODULES_DIR],[gdk-pixbuf-2.0],[gdk_pixbuf_moduledir])
 PKG_CHECK_VAR([GDKPIXBUF_LOADER_CACHE],[gdk-pixbuf-2.0],[gdk_pixbuf_cache_file])
 
-
-AC_ARG_ENABLE([debug-code],
-	[AS_HELP_STRING([--enable-debug],
-	[enable debug (default is no)])],
-	[no_debug=false],
-	[no_debug=true])
-if test "$no_debug" = true; then
-        building_debug=no
-        AC_DEFINE(NDEBUG,1,[debug code])
-else
-        building_debug=yes
-        AC_DEFINE(DEBUG,1,[debug code])
+AC_ARG_ENABLE(debug,
+        AS_HELP_STRING([--enable-debug],[enable debug code (default is no)]),
+        [ debug="${enableval}" ], [ debug=no ] )
+if test "x$debug" = xno; then
+	AC_DEFINE(NDEBUG,1,[debug code])
 fi
 
 
