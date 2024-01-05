@@ -2,7 +2,7 @@
 <schemalist>
   <schema path="/org/gtk/gdk-pixbuf/exiv2-rawpreview/" id="org.gtk.gdk-pixbuf.exiv2-rawpreview">
     <key name="font" type="s">
-      <default>''</default>
+      <default>'Cantarell-Thin'</default>
       <summary>Font</summary>
       <description>The font to be used for EXIF data on image overlay</description>
     </key>
