@@ -134,7 +134,7 @@ static void
 eom_exiv2_rating_plugin_init (EomExiv2RatingPlugin *plugin)
 {
     eom_debug(DEBUG_PLUGINS);
-    plugin->exifproxy = new ExifProxy();
+    plugin->exifproxy = new ExifProxy(G_LOG_DOMAIN_EOM_EXIV2);
 }
 
 static void
