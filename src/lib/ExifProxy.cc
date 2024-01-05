@@ -222,7 +222,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
     };
     const std::array  etags {
         _ETag(Exiv2::ExifKey("Exif.Image.Model"), ""),
-        _ETag(Exiv2::ExifKey("Exif.Image.DateTime"), ""),
+        _ETag(Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"), ""),
         _ETag(Exiv2::ExifKey("Exif.Photo.ExposureTime"), ""),
         _ETag(Exiv2::ExifKey("Exif.Photo.FNumber"), ""),
         _ETag(Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings"), "ISO")
