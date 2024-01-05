@@ -224,7 +224,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
         _ETag(Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings"), "ISO")
     };
 
-    os_ << obj_.f << ": " << (obj_.rated ? "R" : "U");
+    os_ << (obj_.rated ? "+++" : "---") << ' ' << obj_.f << " : { ";
 
     std::for_each(etags.begin(), etags.end(), [&os_, &obj_](const auto& t_) {
         Exiv2::ExifData::const_iterator  e = obj_.exif.findKey(t_.tag);
@@ -234,6 +234,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
 
         os_ << " " << t_.prfx << *e;
     });
+    os_ << '}';
 
     return os_;
 }
