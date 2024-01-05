@@ -21,6 +21,8 @@
 
 #include <ExifProxy.h>
 
+#define G_LOG_DOMAIN_EOG_EXIV2  eog:exiv2-rating
+
 
 namespace {
 const char*  _version()
@@ -136,7 +138,7 @@ eog_exiv2_ratings_plugin_init (EogExiv2RatingPlugin *plugin)
 #ifdef EOG_PLUGIN_DEBUG 
 	eog_debug_message (DEBUG_PLUGINS, "EogExiv2RatingPlugin initializing");
 #endif
-        plugin->exifproxy = new ExifProxy();
+        plugin->exifproxy = new ExifProxy(G_LOG_DOMAIN_EOG_EXIV2);
 }
 
 static void
@@ -158,7 +160,7 @@ eog_exiv2_ratings_plugin_dispose (GObject *object)
 		std::ostringstream  os;
 		std::for_each(h.begin(), h.end(), [&os](const auto& e) {
 		    os << e;
-		    g_print("%s\n", os.str().c_str());
+		    g_log(G_LOG_DOMAIN_EOG_EXIV2, G_LOG_LEVEL_MESSAGE, "%s", os.str().c_str());
 		    os.str("");
 		    os.clear();
 		});
