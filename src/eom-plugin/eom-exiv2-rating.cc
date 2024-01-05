@@ -8,6 +8,10 @@
 #include <sstream>
 #include <ExifProxy.h>
 
+#define EOM_PLUGIN_RATE_SET    "EomPluginRunExiv2Rating_set"
+#define EOM_PLUGIN_RATE_UNSET  "EomPluginRunExiv2Rating_unset"
+
+
 #define G_LOG_DOMAIN_EOM_EXIV2 "eom:exiv2-rating"
 
 extern "C" {
@@ -58,7 +62,22 @@ static void
 exiv2rate_cb(GtkAction *action,
            EomExiv2RatingPlugin *plugin)
 {
-    const bool  b = plugin->exifproxy->fliprating();
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
+    const char*  req = gtk_action_get_name(action);
+    G_GNUC_END_IGNORE_DEPRECATIONS;
+
+    const bool  b = [&req, &plugin](){
+#if 0
+	if (strcmp(req, EOM_PLUGIN_RATE_SET) == 0) {
+	    return plugin->exifproxy->cycleRating();
+	}
+	if (strcmp(req, EOM_PLUGIN_RATE_UNSET) == 0) {
+	    return plugin->exifproxy->unsetRating();
+	}
+#endif
+	return plugin->exifproxy->fliprating();
+    }();
+
     if (b) {
 	eom_debug_message(DEBUG_PLUGINS, "Rating action updated rating %s %s", plugin->exifproxy->file().c_str(), plugin->exifproxy->rating());
     }
@@ -77,16 +96,23 @@ selection_changed_cb (EomThumbView         *view,
                       EomExiv2RatingPlugin *plugin);
 
 
-static const gchar* const ui_definition = "<ui><menubar name=\"MainMenu\">"
+static const gchar* const ui_definition =
+    "<ui>"
+      "<menubar name=\"MainMenu\">"
 	"<menu name=\"ToolsMenu\" action=\"Tools\"><separator/>"
-	"<menuitem name=\"EomPluginExiv2Rating\" action=\"EomPluginRunExiv2Rating\"/>"
-	"<separator/></menu></menubar>"
+	    "<menuitem name=\"EomPluginExiv2Rating_set\" action=\"" EOM_PLUGIN_RATE_SET "\"/>"
+	    "<menuitem name=\"EomPluginExiv2Rating_reset\" action=\"" EOM_PLUGIN_RATE_UNSET "\"/>"
+	  "<separator/>"
+	"</menu>"
+      "</menubar>"
 	"<popup name=\"ViewPopup\"><separator/>"
-	"<menuitem action=\"EomPluginRunExiv2Rating\"/><separator/>"
-	"</popup></ui>";
+	    "<menuitem action=\"EomPluginRunExiv2Rating_set\"/><separator/>"
+	"</popup>"
+    "</ui>";
 
 static const GtkActionEntry action_entries[] = {
-	{ "EomPluginRunExiv2Rating", "document-properties", "EXIF Rate Image", "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) }
+    { EOM_PLUGIN_RATE_SET,   "document-properties", "EXIF Rate Image",   "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_UNSET, "document-properties", "EXIF UnRate Image", "0", "EXIF UnRate current image", G_CALLBACK (exiv2rate_cb) }
 };
 
 static void
