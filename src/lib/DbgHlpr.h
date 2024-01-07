@@ -29,6 +29,7 @@ class DbgHlpr
     {
 	std::call_once(DbgHlpr::_once, [](){
 	    DbgHlpr::_instance = std::make_unique<DbgHlpr>();
+	    g_print("G_MESSAGES_DEBUG=%s\n", Exiv2GdkPxBufLdr::G_DOMAIN);
 	});
 
 	return *DbgHlpr::_instance;

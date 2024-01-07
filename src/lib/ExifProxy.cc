@@ -4,6 +4,8 @@
 #include <array>
 #include <algorithm>
 
+#include "DbgHlpr.h"
+
 
 const std::string          ExifProxy::_XMPKEY { "Xmp.xmp.Rating" };
 const Exiv2::XmpTextValue  ExifProxy::_XMPVAL { Exiv2::XmpTextValue("5") };
@@ -15,6 +17,23 @@ std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_)
     });
 
     return os_;
+}
+
+std::ostream& operator<<(std::ostream& os_, const ExifProxy::Rating& r_)
+{
+    return os_ << (int)r_;
+}
+
+ExifProxy::Rating& operator<<(ExifProxy::Rating& r_, Exiv2::XmpData::iterator& v_)
+{
+    r_ = static_cast<ExifProxy::Rating>(
+#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
+	v_->toInt64()
+#else
+	v_->toLong()
+#endif
+	);
+    return r_;
 }
 
 ExifProxy::ExifProxy(const char* logdomain_) : _logdomain(logdomain_), _mtime(0), _xmp(NULL), _xmpkpos(NULL)
@@ -53,14 +72,18 @@ ExifProxy&  ExifProxy::ref(const char* fpath_)
     {
 	_img = Exiv2::ImageFactory::open(fpath_);
 	_img->readMetadata();
-	//_xmpkpos = NULL;
 
 	Exiv2::XmpData&  xmpData = _img->xmpData();
 	Exiv2::XmpData::iterator  kpos = xmpData.findKey(Exiv2::XmpKey(ExifProxy::_XMPKEY));
-	if (kpos != xmpData.end()) {
+	if (kpos == xmpData.end()) {
+	    _rating = Rating::UNSET;
+	}
+	else {
 	    _xmp = &xmpData;
 	    _xmpkpos = kpos;
+	    _rating << _xmpkpos;
 	}
+        DBG_LOG("new file ", fpath_, " rating=", _rating);
     }
 #if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0) 
     catch(Exiv2::Error & e) {
@@ -96,45 +119,44 @@ const char*  ExifProxy::rating()
     }
 
     static const std::string  DEFLT_RATING = "-----";
-    _rating = DEFLT_RATING;
+    _ratingBuf = DEFLT_RATING;
 
-    if (rated())
+    switch (_rating)
     {
-	// spec say -1..5
-#if EXIV2_VERSION >= EXIV2_MAKE_VERSION(0,28,0)
-	long  N = _xmpkpos->toInt64();
-#else
-	long  N = _xmpkpos->toLong();
-#endif
-	if (N < 0) {
-	}
-	else
+        case Rating::ZERO:
+	case Rating::ONE:
+	case Rating::TWO:
+	case Rating::THREE:
+	case Rating::FOUR:
+	case Rating::FIVE:
 	{
-	    if (N > 5) {
-		N = 5;
+	    short N = (short)_rating;
+	    if (N < 0) {
 	    }
-	    char*  n = ((char*)_rating.c_str());
-	    for (int i=0; i<N; i++) {
-		n[i] = '*';
+	    else
+	    {
+		if (N > 5) {
+		    N = 5;
+		}
+		char*  n = ((char*)_ratingBuf.c_str());
+		for (int i=0; i<N; i++) {
+		    n[i] = '*';
+		}
 	    }
-	}
+	} break;
+
+	default:
+	    ;
     }
-    return _rating.c_str();
+
+    return _ratingBuf.c_str();
 }
 
-/* mark the image if its not already rated
-*/
-bool  ExifProxy::fliprating()
+bool  ExifProxy::_updateRating(const ExifProxy::Rating rating_)
 {
-    bool  flipped = false;
-    if (_img.get() == 0) {
-	// something went wrong earlier/no img ... do nothing
-	return flipped;
-    }
-
     try
     {
-	bool  r = false;
+	const ExifProxy::Rating  rating = _rating;
 	if (_xmp == NULL)
 	{
 	    // previously found no XMP data set
@@ -143,7 +165,7 @@ bool  ExifProxy::fliprating()
 	    (*_xmp)[ExifProxy::_XMPKEY] = ExifProxy::_XMPVAL;
 	    _xmpkpos = _xmp->findKey(Exiv2::XmpKey(ExifProxy::_XMPKEY));
 
-	    r = true;
+	    _rating << _xmpkpos;
 	}
 	else
 	{
@@ -151,22 +173,15 @@ bool  ExifProxy::fliprating()
 		(*_xmp)[ExifProxy::_XMPKEY] = ExifProxy::_XMPVAL;
 		_xmpkpos = _xmp->findKey(Exiv2::XmpKey(ExifProxy::_XMPKEY));
 
-		r = true;
+		_rating << _xmpkpos;
 	    }
 	    else {
 		_xmp->erase(_xmpkpos);
 		_xmpkpos = _xmp->end();
-		r = false;
+
+		_rating = Rating::UNSET;
 	    }
 	}
-	_img->writeMetadata();
-
-	flipped = true;
-
-	struct utimbuf  tmput;
-	memset(&tmput, 0, sizeof(tmput));
-	tmput.modtime = _mtime;
-	utime(_file.c_str(), &tmput);
 
 	ExifProxy::History::iterator  h =
 	    std::find_if( _history.begin(), _history.end(), [this](const auto& e){
@@ -174,20 +189,59 @@ bool  ExifProxy::fliprating()
 	    });
 
 	if (h == _history.end()) {
-	    _history.push_back(ExifProxy::HistoryEvnt(_file, _img->exifData(), r));
+	    // lazy init...
+	    DBG_LOG("update rating", _file, " from ", rating, " to ", _rating, "  FIRST TIME");
+	    _history.emplace_back(ExifProxy::HistoryEvnt(_file, _img->exifData(), rating, _rating));
 	}
 	else {
-	    _history.erase(h);
+	    DBG_LOG("update rating", _file, " from ", rating, " to ", _rating);
+	    h->rating = _rating;
 	}
     }
     catch (const std::exception& ex)
     {
 	g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to update XMP rating - %s", _file.c_str(), ex.what());
-	flipped = false;
+	return false;
+    }
+    return true;
+}
+
+
+bool  ExifProxy::syncRating()
+{
+    if (_img.get() == 0) {
+	// something went wrong earlier/no img ... do nothing
+        return false;
+    }
+
+    try
+    {
+	_img->writeMetadata();
+
+	struct utimbuf  tmput;
+	memset(&tmput, 0, sizeof(tmput));
+	tmput.modtime = _mtime;
+	utime(_file.c_str(), &tmput);
+    }
+    catch (const std::exception& ex)
+    {
+	g_log(_logdomain.c_str(), G_LOG_LEVEL_WARNING, "%s: failed to update XMP rating - %s", _file.c_str(), ex.what());
+        return false;
+    }
+    return true;
+}
+
+/* mark the image if its not already rated
+*/
+bool  ExifProxy::fliprating()
+{
+    bool  flipped = false;
+
+    if ((flipped = _updateRating(_rating == Rating::UNSET ? Rating::FIVE : Rating::UNSET)) ) {
+         flipped = syncRating();
     }
     return flipped;
 }
-
 
 void  ExifProxy::_clear()
 {
@@ -195,7 +249,8 @@ void  ExifProxy::_clear()
     _file.clear();
     _img.reset();
     _mtime = 0;
-    _rating.clear();
+    _ratingBuf.clear();
+    _rating = Rating::UNSET;
 }
 
 
@@ -216,7 +271,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
 
         _ETag(const Exiv2::ExifKey&  tag_, const char* prfx_) : tag(tag_), prfx(prfx_) { }
     };
-    const std::array  etags {
+    static const std::array  etags {
         _ETag(Exiv2::ExifKey("Exif.Image.Model"), ""),
         _ETag(Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"), ""),
         _ETag(Exiv2::ExifKey("Exif.Photo.ExposureTime"), ""),
@@ -224,7 +279,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
         _ETag(Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings"), "ISO")
     };
 
-    os_ << (obj_.rated ? "+++" : "---") << ' ' << obj_.f << " : { ";
+    os_ << (obj_.rating == ExifProxy::Rating::UNSET ? "---" : "+++") << ' ' << obj_.f << " : { ";
 
     std::for_each(etags.begin(), etags.end(), [&os_, &obj_](const auto& t_) {
         Exiv2::ExifData::const_iterator  e = obj_.exif.findKey(t_.tag);
@@ -234,7 +289,7 @@ std::ostream&  operator<<(std::ostream& os_, const ExifProxy::HistoryEvnt& obj_)
 
         os_ << " " << t_.prfx << *e;
     });
-    os_ << '}';
+    os_ << " }";
 
     return os_;
 }
