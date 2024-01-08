@@ -7,9 +7,9 @@ AM_LDFLAGS =
 EXTRA_PROGRAMS = gpixbuf gpixbufldr leak magick  magick-omp xmp
 
 leak_CPPFLAGS = $(AM_CPPFLAGS)
-leak_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS) $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -I../src/gdk-pixbuf
+leak_CXXFLAGS = $(AM_CXXFLAGS) $(GDKPIXBUF_CFLAGS) $(IMAGEMAGICK_CFLAGS) $(EXIV_CFLAGS) -I../src/gdk-pixbuf -I../src/lib
 leak_LDFLAGS = $(AM_LDFLAGS) $(GDKPIXBUF_LIBS) $(IMAGEMAGICK_LIBS) $(EXIV_LIBS)
-leak_LDADD = ../src/gdk-pixbuf/.libs/libpixbufloader-exiv2-rawpreview.la
+leak_LDADD = ../src/gdk-pixbuf/.libs/libpixbufloader-exiv2-rawpreview.la ../src/lib/libexiv2-ratings-utils.a
 leak_SOURCES = \
     leak.cc
 
