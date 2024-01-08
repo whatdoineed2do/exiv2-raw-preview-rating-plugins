@@ -34,7 +34,7 @@ enum {
 static void
 statusbar_set_rating(GtkStatusbar *statusbar,
                     EomThumbView *view,
-		    ExifProxy& proxy, bool flipsuccess_)
+		    ExifProxy& proxy)
 {
     if (eom_thumb_view_get_n_selected (view) == 0) {
 	return;
@@ -47,10 +47,9 @@ statusbar_set_rating(GtkStatusbar *statusbar,
     }
 
     const char*  rating = proxy.rating();
-    const char*  info =  flipsuccess_ ? (rating ? rating : "-/-") : "<error>";
 
     char  buf[23] = { 0 };
-    snprintf(buf, sizeof(buf), "EXIF rating: %s", info);
+    snprintf(buf, sizeof(buf), "EXIF rating: %s", rating);
     gtk_statusbar_pop (statusbar, 0);
     gtk_statusbar_push (statusbar, 0, buf);
     gtk_widget_show (GTK_WIDGET (statusbar));
@@ -67,14 +66,12 @@ exiv2rate_cb(GtkAction *action,
     G_GNUC_END_IGNORE_DEPRECATIONS;
 
     const bool  b = [&req, &plugin](){
-#if 0
 	if (strcmp(req, EOM_PLUGIN_RATE_SET) == 0) {
 	    return plugin->exifproxy->cycleRating();
 	}
 	if (strcmp(req, EOM_PLUGIN_RATE_UNSET) == 0) {
 	    return plugin->exifproxy->unsetRating();
 	}
-#endif
 	return plugin->exifproxy->fliprating();
     }();
 
@@ -87,7 +84,7 @@ exiv2rate_cb(GtkAction *action,
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 *plugin->exifproxy, b);
+			 *plugin->exifproxy);
 }
 }
 
@@ -176,12 +173,17 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
 	plugin->window = NULL;
 
 	if (plugin->exifproxy) {
+	    if (!plugin->exifproxy->syncRating()) {
+		g_log(G_LOG_DOMAIN_EOM_EXIV2, G_LOG_LEVEL_WARNING, "Failed to sync rating on %s", plugin->exifproxy->file().c_str());
+	    }
+
 	    const ExifProxy::History&  h = plugin->exifproxy->history();
 	    std::ostringstream  os;
 	    std::for_each(h.begin(), h.end(), [&os](const auto& e) {
 		if (!e.changed()) {
 		    return;
 		}
+
 		os << e;
 		g_log(G_LOG_DOMAIN_EOM_EXIV2, G_LOG_LEVEL_MESSAGE, "%s", os.str().c_str());
 		os.str("");
@@ -326,6 +328,9 @@ selection_changed_cb (EomThumbView         *view,
     GFile* file = eom_image_get_file(image);
     char* path = g_file_get_path(file);
 
+    if (!plugin->exifproxy->syncRating()) {
+	g_log(G_LOG_DOMAIN_EOM_EXIV2, G_LOG_LEVEL_WARNING, "Failed to sync rating on %s", plugin->exifproxy->file().c_str());
+    }
     plugin->exifproxy->ref(path);
 
     g_object_unref(file);
@@ -336,5 +341,5 @@ selection_changed_cb (EomThumbView         *view,
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
 			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 *plugin->exifproxy, true);
+			 *plugin->exifproxy);
 }
