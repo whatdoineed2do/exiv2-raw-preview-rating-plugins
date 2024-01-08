@@ -30,10 +30,6 @@ class ExifProxy
             : f(f_), exif(exif_), rated(rated_)
         { }
 
-        HistoryEvnt(const std::string& f_, const Exiv2::ExifData* exif_ = NULL, bool rated_=false)
-            : f(f_), exif(exif_ == NULL ? Exiv2::ExifData() : *exif_), rated(rated_)
-        { }
-
         const std::string      f;
         const Exiv2::ExifData  exif;
         const bool             rated;
