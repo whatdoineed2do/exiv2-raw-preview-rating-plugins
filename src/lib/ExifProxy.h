@@ -29,7 +29,7 @@ class ExifProxy
     friend std::ostream&  operator<<(std::ostream&, const ExifProxy&);
 
     enum class Rating {
-        UNSET = -1, ZERO = 0, ONE, TWO, THREE, FOUR, FIVE
+        UNSET = -1, ZERO = 0, ONE, TWO, THREE, FOUR, FIVE, MAX
     };
 
     struct HistoryEvnt {
@@ -91,12 +91,6 @@ class ExifProxy
         return _img.get() != 0;
     }
 
-    // does the underlying file have a rating, does not reflect on any changes weve made
-    bool  rated() const
-    {
-        return _xmp == NULL ? false : _xmpkpos != _xmp->end();
-    }
-
     // string rep of rating: **---, *****, ----- etc
     const char*  rating();
 
@@ -105,6 +99,7 @@ class ExifProxy
     bool  fliprating();
 
     bool  cycleRating();
+
     bool  unsetRating();
 
     // write rating to file
@@ -119,8 +114,7 @@ class ExifProxy
 
 
   private:
-    static const std::string          _XMPKEY;
-    static const Exiv2::XmpTextValue  _XMPVAL;
+    static const std::string  _XMPKEY;
 
     const std::string  _logdomain;
 
@@ -132,9 +126,9 @@ class ExifProxy
     Exiv2::Image::AutoPtr  _img;
 #endif
     Exiv2::XmpData*  _xmp;
-    Exiv2::XmpData::iterator  _xmpkpos;
 
     std::string  _file;
+    bool _writable;
     std::string  _ratingBuf;
     Rating  _rating;
 
