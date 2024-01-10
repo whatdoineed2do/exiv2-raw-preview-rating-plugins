@@ -155,8 +155,10 @@ struct Exiv2PxbufCtx
     GdkPixbufModuleSizeFunc     size_func;
     GdkPixbufModulePreparedFunc prepared_func;
     GdkPixbufModuleUpdatedFunc  updated_func;
-    gpointer                    user_data;
+    gpointer                    loader;
+    GError**			error;
 
+    // modules owned private data
     GByteArray*  data;
 };
 
@@ -164,18 +166,20 @@ struct Exiv2PxbufCtx
 extern "C" {
 
 static 
-gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
-                       GdkPixbufModulePreparedFunc prepfunc_,
-                       GdkPixbufModuleUpdatedFunc  updfunc_,
-                       gpointer udata_,
+gpointer _gpxbuf_begin_load(GdkPixbufModuleSizeFunc  sizefunc_,
+                       GdkPixbufModulePreparedFunc   prepdfunc_,
+                       GdkPixbufModuleUpdatedFunc    updatedfunc_,
+                       gpointer loader_,
                        GError **error_)
 {
     struct Exiv2PxbufCtx*  ctx = g_new0(struct Exiv2PxbufCtx, 1);
 
-    ctx->size_func     = szfunc_;
-    ctx->prepared_func = prepfunc_;
-    ctx->updated_func  = updfunc_;
-    ctx->user_data     = udata_;
+    ctx->size_func     = sizefunc_;
+    ctx->prepared_func = prepdfunc_;
+    ctx->updated_func  = updatedfunc_;
+    ctx->loader     = loader_; // we need touch this but needed to pixbuf callbacks
+    ctx->error = error_;
+
     ctx->data = g_byte_array_new();
 
     return (gpointer)ctx;
@@ -183,7 +187,7 @@ gpointer _gpxbuf_bload(GdkPixbufModuleSizeFunc     szfunc_,
 
 
 static 
-gboolean _gpxbuf_lincr(gpointer ctx_,
+gboolean _gpxbuf_incr_load(gpointer ctx_,
                        const guchar* buf_, guint size_,
                        GError **error_)
 {
@@ -194,12 +198,12 @@ gboolean _gpxbuf_lincr(gpointer ctx_,
 }
 
 static 
-gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
+gboolean _gpxbuf_stop_load(gpointer ctx_, GError **error_)
 {
     Exiv2PxbufCtx*  ctx = (Exiv2PxbufCtx*)ctx_;
     gboolean result = FALSE;
 
-    DBG_LOG("starting buf _gpxbuf_sload, len=", ctx->data->len);
+    DBG_LOG("finalise buf via stop_load, len=", ctx->data->len);
 
     std::string  mimeType;
     try
@@ -213,13 +217,13 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 	    if (plb.pixbuf)
 	    {
 		if (ctx->prepared_func != NULL) {
-		    (*ctx->prepared_func)(plb.pixbuf, NULL, ctx->user_data);
+		    (*ctx->prepared_func)(plb.pixbuf, /* animation */ NULL, ctx->loader);
 		}
 		if (ctx->updated_func != NULL) {
 		    (*ctx->updated_func)(plb.pixbuf, 0, 0,
 			    gdk_pixbuf_get_width(plb.pixbuf),
 			    gdk_pixbuf_get_height(plb.pixbuf),
-			    ctx->user_data);
+			    ctx->loader);
 		}
 		result = TRUE;
 	    }
@@ -245,9 +249,9 @@ gboolean _gpxbuf_sload(gpointer ctx_, GError **error_)
 
 void fill_vtable (GdkPixbufModule *module)
 {
-    module->begin_load     = _gpxbuf_bload;
-    module->stop_load      = _gpxbuf_sload;
-    module->load_increment = _gpxbuf_lincr;
+    module->begin_load     = _gpxbuf_begin_load; // via gdk_pixbuf_loader_new_with_{type,mime_type}
+    module->load_increment = _gpxbuf_incr_load;  // via gdk_pixbuf_loader_write(), adds data from underlying image to this loader
+    module->stop_load      = _gpxbuf_stop_load;  // via gdk_pixbuf_loader_close(), indicates no further writes and we finalise the image
 }
 
 
