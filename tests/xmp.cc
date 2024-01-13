@@ -6,15 +6,8 @@
 
 #include <exiv2/exiv2.hpp>
 
-bool isEqual(float a, float b)
-{
-    double d = std::fabs(a - b);
-    return d < 0.00001;
-}
 
-using namespace std;
-
-ostream&  operator<<(ostream& os_, const Exiv2::XmpData& data_) 
+std::ostream&  operator<<(std::ostream& os_, const Exiv2::XmpData& data_) 
 {
     for (Exiv2::XmpData::const_iterator md = data_.begin();
          md != data_.end(); ++md) 
@@ -25,7 +18,7 @@ ostream&  operator<<(ostream& os_, const Exiv2::XmpData& data_)
             << md->typeName() << " " << std::dec << std::setw(3)
             << std::setfill(' ') << std::right
             << md->count() << "  " << std::dec << md->
-            value() << std::endl;
+            value() << '\n';
     }
 
     return os_;
@@ -36,7 +29,7 @@ int main(int argc, char* argv[])
     const char* const  key = "Xmp.xmp.Rating";
 
     if (argc == 1) {
-        cerr << "no input" << endl;
+        std::cerr << "no input" << std::endl;
         return 1;
     }
 
@@ -47,7 +40,7 @@ int main(int argc, char* argv[])
 
         img->readMetadata();
 	Exiv2::XmpData&  xmpData = img->xmpData();
-        cout << "before:\n" << xmpData << endl;
+        std::cout << "before:\n" << xmpData << std::endl;
 
 	Exiv2::XmpTextValue  xmpval(argc == 3 ? argv[2] : "5");
 
@@ -55,10 +48,10 @@ int main(int argc, char* argv[])
         bool  doit = true;
 	Exiv2::XmpData::iterator  kpos = xmpData.findKey(Exiv2::XmpKey(key));
 	if (kpos == xmpData.end()) {
-            cout << filename << ": no such key" << endl;
+            std::cout << filename << ": no such key" << std::endl;
         }
         else {
-            cout << "current value=" << kpos->toString() << "  req'd value=" << xmpval.toString() << endl;
+            std::cout << "current value=" << kpos->toString() << "  req'd value=" << xmpval.toString() << std::endl;
             if (kpos->toString() == xmpval.toString()) {
                 doit = false;
             }
@@ -73,7 +66,7 @@ int main(int argc, char* argv[])
             //img->setXmpData(xmpData);
             img->writeMetadata();
         }
-        cout << "after:\n" << xmpData << endl;
+        std::cout << "after:\n" << xmpData << std::endl;
     }
     catch(Exiv2::Error & e) {
 	std::cout << "Caught Exiv2 exception '" << e << "'\n";
