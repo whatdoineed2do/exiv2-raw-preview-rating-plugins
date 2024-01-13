@@ -20,8 +20,9 @@ gpixbuf_SOURCES = \
     gpixbuf.c 
 
 xmp_CPPFLAGS = $(AM_CPPFLAGS)
-xmp_CXXFLAGS = $(AM_CXXFLAGS) $(EXIV_CFLAGS)
-xmp_LDFLAGS = $(AM_LDFLAGS) $(EXIV_LIBS)
+xmp_CXXFLAGS = $(AM_CXXFLAGS) $(EXIV_CFLAGS) $(GDKPIXBUF_CFLAGS) $(IMAGEMAGICK_CFLAGS) -I../src/lib
+xmp_LDFLAGS = $(AM_LDFLAGS) $(EXIV_LIBS) $(GDKPIXBUF_LIBS) $(IMAGEMAGICK_LIBS)
+xmp_LDADD = -L../src/lib/ -lexiv2-ratings-utils
 xmp_SOURCES = \
     xmp.cc 
 
