@@ -10,6 +10,7 @@
 
 #define EOM_PLUGIN_RATE_SET    "EomPluginRunExiv2Rating_set"
 #define EOM_PLUGIN_RATE_UNSET  "EomPluginRunExiv2Rating_unset"
+#define EOM_PLUGIN_RATE_FLIP   "EomPluginRunExiv2Rating_flip"
 
 
 #define G_LOG_DOMAIN_EOM_EXIV2 "eom:exiv2-rating"
@@ -99,6 +100,7 @@ static const gchar* const ui_definition =
 	"<menu name=\"ToolsMenu\" action=\"Tools\"><separator/>"
 	    "<menuitem name=\"EomPluginExiv2Rating_set\" action=\"" EOM_PLUGIN_RATE_SET "\"/>"
 	    "<menuitem name=\"EomPluginExiv2Rating_reset\" action=\"" EOM_PLUGIN_RATE_UNSET "\"/>"
+	    "<menuitem name=\"EomPluginExiv2Rating_flip\" action=\"" EOM_PLUGIN_RATE_FLIP "\"/>"
 	  "<separator/>"
 	"</menu>"
       "</menubar>"
@@ -108,6 +110,7 @@ static const gchar* const ui_definition =
     "</ui>";
 
 static const GtkActionEntry action_entries[] = {
+    { EOM_PLUGIN_RATE_FLIP,  "document-properties", "EXIF Rating flip",  "M", "EXIF Flip rating of current image", G_CALLBACK (exiv2rate_cb) },
     { EOM_PLUGIN_RATE_SET,   "document-properties", "EXIF Rate Image",   "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) },
     { EOM_PLUGIN_RATE_UNSET, "document-properties", "EXIF UnRate Image", "0", "EXIF UnRate current image", G_CALLBACK (exiv2rate_cb) }
 };
