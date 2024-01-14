@@ -1,10 +1,6 @@
-AC_PREREQ(2.64)
+AC_PREREQ([2.69])
 
-AC_INIT([exiv2-raw-preview-rating-plugins],
-	[v1.4.2.1],
-	[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins/issues],
-	[exiv2-raw-preview-rating-plugins],
-	[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins])
+AC_INIT([exiv2-raw-preview-rating-plugins],[v1.4.2.1],[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins/issues],[exiv2-raw-preview-rating-plugins],[https://github.com/whatdoineed2do/exiv2-raw-preview-rating-plugins])
 
 AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip])
 AC_CONFIG_MACRO_DIRS([m4])
@@ -17,7 +13,7 @@ AC_PROG_CXX
 AM_PROG_CC_C_O
 AC_HEADER_STDC
 AC_PROG_INSTALL
-AC_PROG_LIBTOOL
+LT_INIT
 PKG_PROG_PKG_CONFIG
 
 AM_CPPFLAGS="-Wall"
@@ -110,7 +106,7 @@ if test "x$need_peas" != "xyes" ; then
     sed -i "s/lib//" src/Makefile.am
 fi
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
     Makefile
     src/Makefile
     src/lib/Makefile
@@ -120,3 +116,4 @@ AC_OUTPUT([
     src/gdk-pixbuf/data/Makefile
     tests/Makefile
 ])
+AC_OUTPUT
