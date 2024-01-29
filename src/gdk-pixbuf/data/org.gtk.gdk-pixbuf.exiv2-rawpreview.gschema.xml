@@ -22,7 +22,7 @@
       <description>Limit the size of the preview image(s) found to this size when choising preview to extract and present to pixbuf loader</description>
     </key>
     <key name="auto-orientate" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Auto orientate based on EXIF</summary>
       <description>Auto orientate image based on EXIF</description>
     </key>

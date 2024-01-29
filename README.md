@@ -6,7 +6,7 @@ This project provides 3x plugins:
 The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-pixbuf.exiv2-rawpreview); do echo "'$i'  $(gsettings describe org.gtk.gdk-pixbuf.exiv2-rawpreview $i)"; done`:
   * `scale-limit` - scaling of preview image to display
   * `convert-srgb` - attempt to convert colourspace to sRGB
-  * `auto-orientate` - disable/enable correct image orientation
+  * `auto-orientate` - disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation
   * `font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
 * 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via the `R` keybinding - relies on `exiv2` for supported EXIF images:
   * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
