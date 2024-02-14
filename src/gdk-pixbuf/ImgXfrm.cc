@@ -290,24 +290,49 @@ void  ImgXfrmAnnotate::_transform() const
 
     std::ostringstream transcolour;
     transcolour << "graya(" << env.transparency() << "%)";
-    Magick::Image  info(magick.size(), transcolour.str().c_str());
+
+    const auto  exifstr = exif.str();
+ 
+    // calc font size based on % height requested (to prevent large images from having tiny annotations)
+    auto  imagefactory = [&]() {
+	auto  g = magick.size();
+
+	if (env.fontpcnt()) {
+	    g.height( g.height() * env.fontpcnt()/100.0 );
+	    Magick::Image  info(g, transcolour.str().c_str());
+
+	    const auto  lines = std::count(exifstr.begin(), exifstr.end(), '\n') +1;
+	    info.fontPointsize( ceil( ((info.rows()/lines ) * 0.75)) );
+
+	    return info;
+	}
+	else {
+	    Magick::Image  info(g, transcolour.str().c_str());
+	    info.fontPointsize(env.fontsize());
+	    return info;
+	}
+
+    };
+
+    Magick::Image  info = imagefactory();
+
     info.borderColor(transcolour.str().c_str());
     if (env.font().length() > 0) {
 	info.font(env.font());
     }
     info.fillColor("black");
     info.strokeColor("none");
-    info.fontPointsize(env.fontsize());
+
     try
     {
-	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
+	info.annotate(exifstr, Magick::Geometry("+10+10"), Magick::WestGravity);
     }
     catch (const Magick::ErrorType& ex)
     {
 	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unable to use specified font, attempting with default - %s", ex.what());
 	// font releated exception...
 	info.font("");
-	info.annotate(exif.str(), Magick::Geometry("+10+10"), Magick::WestGravity);
+	info.annotate(exifstr, Magick::Geometry("+10+10"), Magick::WestGravity);
     }
     info.trim();
     info.border();

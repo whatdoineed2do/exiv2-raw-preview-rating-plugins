@@ -9,8 +9,9 @@
 
 namespace  Exiv2GdkPxBufLdr
 {
-const gchar* const  KEY_FONT = "font";
-const gchar* const  KEY_FONT_SIZE = "font-size";
+const gchar* const  KEY_ANNOTATION_FONT = "annotation-font";
+const gchar* const  KEY_ANNOTATION_PERCENT_HEIGHT  = "annotation-percent-height";
+const gchar* const  KEY_ANNOTATION_FONT_SIZE = "annotation-font-size";
 const gchar* const  KEY_TRANSPARENCY = "transparency";
 const gchar* const  KEY_SCALE_LIMIT = "scale-limit";
 const gchar* const  KEY_CONVERT_SRGB = "convert-srgb";
@@ -44,10 +45,13 @@ class Env
     { return _rotate; }
 
     const std::string&  font() const
-    { return _font; }
+    { return _annotation.font; }
+
+    const float  fontpcnt() const
+    { return _annotation.percent; }
 
     unsigned short  fontsize() const
-    { return _fontsize; }
+    { return _annotation.fontsize; }
 
     unsigned short  transparency() const
     { return _transparency; }
@@ -56,8 +60,13 @@ class Env
     unsigned short  _previewScaleLimit;
     bool   _convertSRGB;
     bool   _rotate;
-    std::string  _font;
-    unsigned short  _fontsize;
+    struct _Annotation {
+	std::string  font;
+	float  percent;
+	unsigned short  fontsize;
+
+        _Annotation(float percent_, unsigned short fontsize_) : percent(percent_), fontsize(fontsize_) { }
+    } _annotation;
     unsigned short  _transparency;
 
     GSettings* _settings;
