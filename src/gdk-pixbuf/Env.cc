@@ -19,7 +19,7 @@ Env::Env()
       */
       _convertSRGB(false),
       _rotate(true),
-      _fontsize(16),
+      _annotation(12, 16),
       _settings(NULL)
 {
     const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
@@ -30,17 +30,19 @@ Env::Env()
     _settings = g_settings_new(schema_id);
 
     update(_settings, KEY_SCALE_LIMIT);
-    update(_settings, KEY_FONT);
-    update(_settings, KEY_FONT_SIZE);
+    update(_settings, KEY_ANNOTATION_FONT);
+    update(_settings, KEY_ANNOTATION_PERCENT_HEIGHT);
+    update(_settings, KEY_ANNOTATION_FONT_SIZE);
     update(_settings, KEY_TRANSPARENCY);
     update(_settings, KEY_CONVERT_SRGB);
     update(_settings, KEY_AUTO_ORIENTATE);
 
-    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s' %s=%d  %s=%d  %s=%s  %s=%s",
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s' %s=%f %s=%d  %s=%d  %s=%s  %s=%s",
        schema_id,
        KEY_SCALE_LIMIT, _previewScaleLimit,
-       KEY_FONT, _font.c_str(),
-       KEY_FONT_SIZE, _fontsize,
+       KEY_ANNOTATION_FONT, _annotation.font.c_str(),
+       KEY_ANNOTATION_PERCENT_HEIGHT, _annotation.percent,
+       KEY_ANNOTATION_FONT_SIZE, _annotation.fontsize,
        KEY_TRANSPARENCY, _transparency,
        KEY_CONVERT_SRGB, _convertSRGB ? "true" : "false",
        KEY_AUTO_ORIENTATE, _rotate ? "true" : "false");
@@ -70,15 +72,21 @@ void  Env::update(GSettings* settings_, const gchar* key_)
 	if      (_transparency > 100)  _transparency = 100;
 	else if (_transparency < 0)    _transparency = 0;
     }
-    else if (g_strcmp0(key_, KEY_FONT_SIZE) == 0) {
-	int  fontsize = g_settings_get_int(settings_, key_);
-	if (fontsize > 0) {
-	    _fontsize = fontsize;
+    else if (g_strcmp0(key_, KEY_ANNOTATION_PERCENT_HEIGHT) == 0) {
+	int  percent = g_settings_get_int(settings_, key_);
+	if (percent <= 100 || percent>= 0) {
+	    _annotation.percent = percent;
 	}
     }
-    else if (g_strcmp0(key_, KEY_FONT) == 0) {
+     else if (g_strcmp0(key_, KEY_ANNOTATION_FONT_SIZE) == 0) {
+	int  fontsize = g_settings_get_int(settings_, key_);
+	if (fontsize > 0) {
+	    _annotation.fontsize = fontsize;
+	}
+    }
+    else if (g_strcmp0(key_, KEY_ANNOTATION_FONT) == 0) {
 	gchar*  font = g_settings_get_string(settings_, key_);
-	_font = font;
+	_annotation.font = font;
 	g_free(font);
     }
     else 
