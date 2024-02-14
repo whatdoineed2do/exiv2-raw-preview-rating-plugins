@@ -7,7 +7,9 @@ The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-
   * `scale-limit` - scaling of preview image to display
   * `convert-srgb` - attempt to convert colourspace to sRGB
   * `auto-orientate` - disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation
-  * `font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
+  * `annotation-font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
+  * `annotation-percent-height` - size of overlayed EXIF details based on height (set to 0 to disable and to use explicit `font-size`)
+  * `annotation-font-size - font size for EXIF
 * 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via the `R` keybinding - relies on `exiv2` for supported EXIF images:
   * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
   * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
