@@ -2,6 +2,10 @@
 
 #include <array>
 #include <chrono>
+#include <functional>
+#include <sstream>
+#include <algorithm>
+#include <string>
 
 #include "Buf.h"
 #include "DbgHlpr.h"
@@ -234,124 +238,204 @@ void  ImgXfrmsRGB::_transform() const
     }
 }
 
+
 void  ImgXfrmAnnotate::_transform() const
 {
+    using ExifTransformer = std::function<void(const Exiv2::ExifData::const_iterator&, const Exiv2::ExifData&, std::ostringstream&)>;
+
+    struct ExifTagConfig {
+	Exiv2::ExifKey key;
+	ExifTransformer transform = nullptr;
+    };
     static const std::array  etags {
-	Exiv2::ExifKey("Exif.Image.Model"),
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Image.Model"),
+	    [this](const auto& e, const auto& data, auto& os) {
+		os << *e << "  " << width << "x" << height << "\n";
+		auto ln = lensName(data);
+		if (ln != data.end()) {
+		    os << ln->print(&data) << "\n";
+		}
+	    }
+	},
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"),
+	    [](const auto& e, const auto&, auto& os) {
+		std::string dateStr = e->toString();
+		// EXIF dates are always a fixed format, so we can safely check lengths
+		// and replace the colons at index 4 and 7.
+		if (dateStr.length() >= 10) {
+		    if (dateStr[4] == ':') dateStr[4] = '-';
+		    if (dateStr[7] == ':') dateStr[7] = '-';
+		}
+		os << dateStr << '\n';
+	    }
+	},
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Photo.FocalLength"),
+	    [](const auto& e, const auto& data, auto& os) {
+		Exiv2::Rational rational = e->toRational();
 
-	Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"),
+		if (rational.second != 0) {
+		    if (rational.first % rational.second == 0) {
+			os << (rational.first / rational.second) << "mm  ";
+		    }
+		    else {
+			float value = static_cast<float>(rational.first) / rational.second;
+			os << value << "mm  ";
+		    }
+		}
+	    }
+	},
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Photo.ExposureTime"),
+	    [](const auto& e, const auto& data, auto& os) {
+		std::string exp = e->print(&data); // e.g., "1/500 s" or "2 s"
 
-	Exiv2::ExifKey("Exif.Photo.FocalLength"),
-	Exiv2::ExifKey("Exif.Photo.ExposureTime"),
-	Exiv2::ExifKey("Exif.Photo.FNumber"),
-	Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings")
+		// Remove the " s" suffix if present
+		if (exp.size() >= 2 && exp.compare(exp.size() - 2, 2, " s") == 0) {
+		    exp.erase(exp.size() - 2);
+		}
+		// Handle single-character "s" just in case of weird formatting (e.g., "2s")
+		else if (!exp.empty() && exp.back() == 's') {
+		    exp.pop_back();
+		}
+
+		// Clean up any trailing whitespace left over (like from "2 s" -> "2 ")
+		while (!exp.empty() && std::isspace(exp.back())) {
+		    exp.pop_back();
+		}
+
+		os << exp << "  ";
+	    }
+	},
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Photo.FNumber"),
+	    [](const auto& e, const auto& data, auto& os) {
+		std::string fnum = e->print(&data);
+		if (!fnum.empty() && fnum[0] == 'F') {
+		    os << "f/" << fnum.substr(1) << "  ";
+		} else {
+		    os << fnum << "  ";
+		}
+	    }
+	},
+	ExifTagConfig {
+	    Exiv2::ExifKey("Exif.Photo.ISOSpeedRatings"),
+	    [](const auto& e, const auto&, auto& os) { os << "ISO" << *e; }
+	}
     };
 
     std::ostringstream  exif;
-    std::for_each(etags.begin(), etags.end(), [&exif, this](const auto& etag) {
-	Exiv2::ExifData::const_iterator  e = exifdata.findKey(etag);
-	DBG_LOG("Exif key: ", etag.key(), "value: '",
-	       [&e, this](){
-	           std::ostringstream dump;
-		   if (e==exifdata.end()) {
-		       return std::string("<n/a>");
-		   }
-		   dump << *e;
-		   return dump.str();
-	       }(), "'");
+    std::for_each(etags.begin(), etags.end(), [&exif, this](const ExifTagConfig& tag) {
+	auto e = exifdata.findKey(tag.key);
+
 	if (e == exifdata.end()) {
-	    exif << "[N/F:" << etag.key() << "]";
+	    DBG_LOG("Exif key: ", tag.key.key(), " value: '<n/a>'");
+	    exif << "[N/F:" << tag.key.key() << "]";
 	    return;
 	}
 
-	exif << *e;
-	{
-	    if (etag.key() == "Exif.Image.Model")
-	    {
-		exif << "  " << width << "x" << height << "\n";
-		Exiv2::ExifData::const_iterator  ln = lensName(exifdata);
-		if (ln != exifdata.end()) { 
-		    exif << ln->print(&exifdata) << "\n";
-		}
-	    }
-	    else if (etag.key() == "Exif.Photo.DateTimeOriginal")
-	    {
-		exif << '\n';
-	    }
-	    else if (etag.key() == "Exif.Photo.ISOSpeedRatings")
-	    {
-		exif << "ISO";
-	    }
-	    else {
-		exif << "  ";
-	    }
+	DBG_LOG("Exif key: ", tag.key.key(), " value: '", e->toString(), "'");
+
+	if (tag.transform) {
+	    tag.transform(e, exifdata, exif);
+	} else {
+	    exif << *e << "  ";
 	}
     });
 
     std::ostringstream transcolour;
     transcolour << "graya(" << env.transparency() << "%)";
 
-    const auto  exifstr = exif.str();
+    const auto exifstr = exif.str();
  
-    // calc font size based on % height requested (to prevent large images from having tiny annotations)
-    auto  imagefactory = [&]() {
-	auto  g = magick.size();
+    auto imagefactory = [&]() {
+        auto g = magick.size();
 
-	if (env.fontpcnt()) {
-	    g.height( g.height() * env.fontpcnt()/100.0 );
-	    Magick::Image  info(g, transcolour.str().c_str());
+        if (env.fontpcnt()) {
+            g.height( g.height() * env.fontpcnt()/100.0 );
+            Magick::Image info(g, "none"); // Initialize as pure transparent instead of graya
 
-	    const auto  lines = std::count(exifstr.begin(), exifstr.end(), '\n') +1;
-	    info.fontPointsize( ceil( ((info.rows()/lines ) * 0.75)) );
+            const auto lines = std::count(exifstr.begin(), exifstr.end(), '\n') + 1;
+            info.fontPointsize( ceil( ((info.rows()/lines ) * 0.75)) );
 
-	    return info;
-	}
-	else {
-	    Magick::Image  info(g, transcolour.str().c_str());
-	    info.fontPointsize(env.fontsize());
-	    return info;
-	}
-
+            return info;
+        }
+        else {
+            Magick::Image info(g, "none"); // Initialize as pure transparent
+            info.fontPointsize(env.fontsize());
+            return info;
+        }
     };
 
-    Magick::Image  info = imagefactory();
+    Magick::Image info = imagefactory();
 
-    info.borderColor(transcolour.str().c_str());
     if (env.font().length() > 0) {
-	info.font(env.font());
+        info.font(env.font());
     }
-    info.fillColor("black");
-    info.strokeColor("none");
+
+    // Use your opacity variable dynamically (convert 0-100% config to 0.0-1.0 float)
+    double box_opacity = env.transparency() / 100.0; 
+    if (box_opacity <= 0.0 || box_opacity > 1.0) box_opacity = 0.6; // Fallback default
 
     try
     {
-	info.annotate(exifstr, Magick::Geometry("+10+10"), Magick::WestGravity);
+        // Render text directly onto the large transparent canvas first
+        info.fillColor("white");
+        info.strokeColor("none");
+        info.annotate(exifstr, Magick::Geometry("+0+0"), Magick::WestGravity);
+
+        // Trim tightly to the text boundaries
+        info.trim();
+
+        // Calculate and apply dynamic transparent padding (5% of text width)
+        size_t pad_x = static_cast<size_t>(info.columns() * 0.05);
+        size_t pad_y = static_cast<size_t>(info.columns() * 0.05 * 0.8);
+
+        info.borderColor("none");
+        info.border(Magick::Geometry(pad_x, pad_y));
+
+        // Generate the background box layer to match the padded text block
+        Magick::Image bg(Magick::Geometry(info.columns(), info.rows()), "none");
+
+        std::vector<Magick::Drawable> draw_list;
+        draw_list.push_back(Magick::DrawableFillColor("grey20"));
+        draw_list.push_back(Magick::DrawableStrokeColor("none"));
+        draw_list.push_back(Magick::DrawableRoundRectangle(
+            0, 0,
+            bg.columns() - 1, bg.rows() - 1,
+            12, 12
+        ));
+        bg.draw(draw_list);
+
+        // Apply the transparency ONLY to the background box layer first
+        bg.evaluate(Magick::AlphaChannel, Magick::MultiplyEvaluateOperator, box_opacity);
+
+        // Composite the 100% solid white text layer ON TOP of the semi-transparent box
+        bg.composite(info, 0, 0, Magick::OverCompositeOp);
+
+        // Replace info with our finalized badge layer
+        info = bg;
     }
     catch (const Magick::ErrorType& ex)
     {
-	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unable to use specified font, attempting with default - %s", ex.what());
-	// font releated exception...
-	info.font("");
-	info.annotate(exifstr, Magick::Geometry("+10+10"), Magick::WestGravity);
-    }
-    info.trim();
-    info.border();
-#if MagickLibInterface == 5  // IM 6.x
-    info.opacity(65535/3.0);
-    info.transparent("grey");
-#elif MagickLibInterface == 6  // IM 7
-    info.opaque(Magick::Color("none"), Magick::Color("grey"));
-    info.backgroundColor(Magick::Color("grey"));
-#endif
-
-    if (info.columns() > magick.columns()-10) {
-	std::ostringstream  os;
-	os << magick.columns()-10 << "x";
-	info.resize(os.str());
+        g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unable to use specified font, attempting with default - %s", ex.what());
+        info.font("");
+        info.annotate(exifstr, Magick::Geometry("+10+10"), Magick::WestGravity);
+        info.trim();
     }
 
+    // Resize bounding protection if text is wider than target image
+    if (info.columns() > magick.columns() - 10) {
+        std::ostringstream os;
+        os << magick.columns() - 10 << "x";
+        info.resize(os.str());
+    }
+
+    // Drop the badge overlay onto the main photo matrix
     magick.composite(info,
-		     Magick::Geometry(info.columns(), info.rows(), 10, magick.rows()-info.rows()-10),
-		     Magick::OverlayCompositeOp);
+                     Magick::Geometry(info.columns(), info.rows(), 10, magick.rows() - info.rows() - 10),
+                     Magick::OverCompositeOp);
 }
 }
