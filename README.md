@@ -1,7 +1,16 @@
 # `gdk pixbuf` Viewer for _RAW_ preview images and Gnome EOG/EOM EXIF rating plugins
 
 This project provides 3x plugins:
-* a `gdk pixbuf loader` that handles RAW files (primarily Nikon NEF, Canon CR2 and DNGs) that loads the largest embedded preview image available (via `exiv2`) - the [RAW file support is dependant on `exiv2`](https://dev.exiv2.org/projects/exiv2/wiki/Supported_image_formats).  The largest embedded preview image is dependant on the underlying device but the user can choose to scale for easier handling by `gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632`.  Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
+* a `gdk pixbuf loader` that handles RAW files (primarily Nikon NEF, Canon CR2 and DNGs) that loads the largest embedded preview image available (via `exiv2`) - the [RAW file support is dependant on `exiv2`](https://dev.exiv2.org/projects/exiv2/wiki/Supported_image_formats).
+
+   The largest embedded preview image is dependant on the underlying capture device but the user can choose to scale for easier handling by `gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632`.  Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
+
+  The loaded image overlays useful EXIF information to aid image review.
+* 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via the `R` keybinding - relies on `exiv2` for supported EXIF images:
+  * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
+  * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
+
+![eye of mate screenshot](docs/eom.png)
 
 The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-pixbuf.exiv2-rawpreview); do echo "'$i'  $(gsettings describe org.gtk.gdk-pixbuf.exiv2-rawpreview $i)"; done`:
   * `scale-limit` - scaling of preview image to display
@@ -9,10 +18,7 @@ The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-
   * `auto-orientate` - disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation
   * `annotation-font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
   * `annotation-percent-height` - size of overlayed EXIF details based on height (set to 0 to disable and to use explicit `font-size`)
-  * `annotation-font-size - font size for EXIF
-* 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via the `R` keybinding - relies on `exiv2` for supported EXIF images:
-  * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
-  * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
+  * `annotation-font-size` - font size for EXIF
 
 ## Intended Usage
 For use when reviewing and making _first cut_ selections from RAW files from within a Linux graphical environment: a precursor ahead of editting your RAW files where a faster lightweight workflow is required (no need for a VM with CaptureNX or Lightroom etc or native Linux RawTherapee etc).
