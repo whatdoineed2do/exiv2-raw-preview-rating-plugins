@@ -251,23 +251,75 @@ void  ImgXfrmAnnotate::_transform() const
 	ExifTagConfig {
 	    Exiv2::ExifKey("Exif.Image.Model"),
 	    [this](const auto& e, const auto& data, auto& os) {
-		os << *e << "  " << width << "x" << height << "\n";
+		os << *e;
 		auto ln = lensName(data);
 		if (ln != data.end()) {
-		    os << ln->print(&data) << "\n";
+		    os << "  " << ln->print(&data);
 		}
+		os << '\n' << width << "x" << height << "\n";
 	    }
 	},
-	ExifTagConfig {
-	    Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"),
-	    [](const auto& e, const auto&, auto& os) {
+	ExifTagConfig { 
+	    Exiv2::ExifKey("Exif.Photo.DateTimeOriginal"), 
+	    [](const auto& e, const auto& data, auto& os) {
 		std::string dateStr = e->toString();
-		// EXIF dates are always a fixed format, so we can safely check lengths
-		// and replace the colons at index 4 and 7.
+
+		// 1. Reformat colons to dashes
 		if (dateStr.length() >= 10) {
 		    if (dateStr[4] == ':') dateStr[4] = '-';
 		    if (dateStr[7] == ':') dateStr[7] = '-';
 		}
+
+		std::string offsetStr = "";
+
+		// Fallback 1: Standard EXIF 2.3+ (or sidecar files)
+		if (auto tz = data.findKey(Exiv2::ExifKey("Exif.Photo.OffsetTimeOriginal")); tz != data.end()) {
+		    offsetStr = tz->toString();
+		}
+		// Fallback 2: Modern Nikon World Time (D800, Z series)
+		else if (auto ntz = data.findKey(Exiv2::ExifKey("Exif.NikonWt.Timezone")); ntz != data.end()) {
+		    offsetStr = ntz->toString();
+		}
+		// Fallback 3: Older Nikon Binary World Time structure (D300, D700, D3)
+		else if (auto nwt = data.findKey(Exiv2::ExifKey("Exif.Nikon3.WorldTime")); nwt != data.end() && nwt->count() >= 4) {
+		    int16_t total_minutes = static_cast<int16_t>(nwt->value().toInt64(0));
+		    int dst_flag = static_cast<int>(nwt->value().toInt64(2));
+
+		    if (dst_flag == 1) {
+			total_minutes += 60;
+		    }
+
+		    if (total_minutes != 0) {
+			int hours = std::abs(total_minutes) / 60;
+			int mins = std::abs(total_minutes) % 60;
+			char sign = (total_minutes >= 0) ? '+' : '-';
+
+			char buf[16];
+			std::snprintf(buf, sizeof(buf), "GMT%c%02d:%02d", sign, hours, mins);
+			offsetStr = buf;
+		    }
+		}
+
+		// Clean up trailing spaces from string formats
+		while (!offsetStr.empty() && std::isspace(offsetStr.back())) {
+		    offsetStr.pop_back();
+		}
+
+		// Clean up leading spaces just in case (e.g., " 0" -> "0")
+		while (!offsetStr.empty() && std::isspace(offsetStr.front())) {
+		    offsetStr.erase(0, 1);
+		}
+
+		// 2. Clear out ANY explicit zero/GMT markers (including a raw "0")
+		if (offsetStr == "0" || offsetStr == "+00:00" || offsetStr == "-00:00" || offsetStr == "00:00" || offsetStr == "Z") {
+		    offsetStr = "";
+		}
+
+		// Only append to output if there is a non-zero holiday/local offset
+		if (!offsetStr.empty()) {
+		    dateStr += " (" + offsetStr + ")";
+		}
+
 		os << dateStr << '\n';
 	    }
 	},
