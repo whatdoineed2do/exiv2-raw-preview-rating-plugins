@@ -19,7 +19,7 @@ Env::Env()
       */
       _convertSRGB(false),
       _rotate(true),
-      _annotation(12, 16),
+      _annotation(12, 16, 3, 3),
       _settings(NULL)
 {
     const gchar *schema_id = "org.gtk.gdk-pixbuf.exiv2-rawpreview";
@@ -33,16 +33,20 @@ Env::Env()
     update(_settings, KEY_ANNOTATION_FONT);
     update(_settings, KEY_ANNOTATION_PERCENT_HEIGHT);
     update(_settings, KEY_ANNOTATION_FONT_SIZE);
+    update(_settings, KEY_ANNOTATION_X_OFFSET);
+    update(_settings, KEY_ANNOTATION_Y_OFFSET);
     update(_settings, KEY_TRANSPARENCY);
     update(_settings, KEY_CONVERT_SRGB);
     update(_settings, KEY_AUTO_ORIENTATE);
 
-    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s' %s=%f %s=%d  %s=%d  %s=%s  %s=%s",
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "intial values for schema=%s %s=%d  %s='%s' %s=%f %s=%d  %s=%d %s=%d %s=%d  %s=%s  %s=%s",
        schema_id,
        KEY_SCALE_LIMIT, _previewScaleLimit,
        KEY_ANNOTATION_FONT, _annotation.font.c_str(),
        KEY_ANNOTATION_PERCENT_HEIGHT, _annotation.percent,
        KEY_ANNOTATION_FONT_SIZE, _annotation.fontsize,
+       KEY_ANNOTATION_X_OFFSET, _annotation.xoffset,
+       KEY_ANNOTATION_Y_OFFSET, _annotation.yoffset,
        KEY_TRANSPARENCY, _transparency,
        KEY_CONVERT_SRGB, _convertSRGB ? "true" : "false",
        KEY_AUTO_ORIENTATE, _rotate ? "true" : "false");
@@ -78,7 +82,7 @@ void  Env::update(GSettings* settings_, const gchar* key_)
 	    _annotation.percent = percent;
 	}
     }
-     else if (g_strcmp0(key_, KEY_ANNOTATION_FONT_SIZE) == 0) {
+    else if (g_strcmp0(key_, KEY_ANNOTATION_FONT_SIZE) == 0) {
 	int  fontsize = g_settings_get_int(settings_, key_);
 	if (fontsize > 0) {
 	    _annotation.fontsize = fontsize;
@@ -88,6 +92,18 @@ void  Env::update(GSettings* settings_, const gchar* key_)
 	gchar*  font = g_settings_get_string(settings_, key_);
 	_annotation.font = font;
 	g_free(font);
+    }
+    else if (g_strcmp0(key_, KEY_ANNOTATION_X_OFFSET) == 0) {
+	int  offset = g_settings_get_int(settings_, key_);
+	if (offset >= 0 || offset <= 100) {
+	    _annotation.xoffset = offset;
+	}
+    }
+    else if (g_strcmp0(key_, KEY_ANNOTATION_Y_OFFSET) == 0) {
+	int  offset = g_settings_get_int(settings_, key_);
+	if (offset >= 0 || offset <= 100) {
+	    _annotation.yoffset = offset;
+	}
     }
     else 
     {

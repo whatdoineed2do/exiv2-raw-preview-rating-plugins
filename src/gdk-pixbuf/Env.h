@@ -12,6 +12,8 @@ namespace  Exiv2GdkPxBufLdr
 const gchar* const  KEY_ANNOTATION_FONT = "annotation-font";
 const gchar* const  KEY_ANNOTATION_PERCENT_HEIGHT  = "annotation-percent-height";
 const gchar* const  KEY_ANNOTATION_FONT_SIZE = "annotation-font-size";
+const gchar* const  KEY_ANNOTATION_X_OFFSET = "annotation-x-offset";
+const gchar* const  KEY_ANNOTATION_Y_OFFSET = "annotation-y-offset";
 const gchar* const  KEY_TRANSPARENCY = "transparency";
 const gchar* const  KEY_SCALE_LIMIT = "scale-limit";
 const gchar* const  KEY_CONVERT_SRGB = "convert-srgb";
@@ -55,6 +57,12 @@ class Env
 
     unsigned short  transparency() const
     { return _transparency; }
+
+    unsigned short  xOffset() const
+    { return _annotation.xoffset; }
+
+    unsigned short  yOffset() const
+    { return _annotation.yoffset; }
     
   private:
     unsigned short  _previewScaleLimit;
@@ -65,7 +73,10 @@ class Env
 	float  percent;
 	unsigned short  fontsize;
 
-        _Annotation(float percent_, unsigned short fontsize_) : percent(percent_), fontsize(fontsize_) { }
+	unsigned short  xoffset;
+	unsigned short  yoffset;
+
+        _Annotation(float percent_, unsigned short fontsize_, unsigned short xoffset_, unsigned short yoffset_) : percent(percent_), fontsize(fontsize_), xoffset(xoffset_), yoffset(yoffset_) { }
     } _annotation;
     unsigned short  _transparency;
 

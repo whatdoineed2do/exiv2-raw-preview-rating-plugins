@@ -19,6 +19,8 @@ The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-
   * `annotation-font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
   * `annotation-percent-height` - size of overlayed EXIF details based on height (set to 0 to disable and to use explicit `font-size`)
   * `annotation-font-size` - font size for EXIF
+  * `annotation-x-offset` - overlay EXIF x-offset
+  * `annotation-y-offset` - overlay EXIF y-offset
 
 ## Intended Usage
 For use when reviewing and making _first cut_ selections from RAW files from within a Linux graphical environment: a precursor ahead of editting your RAW files where a faster lightweight workflow is required (no need for a VM with CaptureNX or Lightroom etc or native Linux RawTherapee etc).

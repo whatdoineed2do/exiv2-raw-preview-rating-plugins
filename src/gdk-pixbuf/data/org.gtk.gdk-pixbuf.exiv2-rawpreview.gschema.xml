@@ -16,6 +16,16 @@
       <summary>Annotation Font size</summary>
       <description>The font size to be used for EXIF data annotation on image overlay</description>
     </key>
+    <key name="annotation-x-offset" type="i">
+      <default>5</default>
+      <summary>Annotation Text % X offset</summary>
+      <description>The % offset for EXIF data annotation on image overlay</description>
+    </key>
+    <key name="annotation-y-offset" type="i">
+      <default>5</default>
+      <summary>Annotation Text % Y offset</summary>
+      <description>The % offset for EXIF data annotation on image overlay</description>
+    </key>
     <key name="transparency" type="i">
       <default>50</default>
       <summary>Transparecny value</summary>
