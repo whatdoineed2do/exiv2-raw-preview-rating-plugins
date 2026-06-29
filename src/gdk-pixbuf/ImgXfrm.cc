@@ -478,16 +478,25 @@ void  ImgXfrmAnnotate::_transform() const
         info.trim();
     }
 
-    // Resize bounding protection if text is wider than target image
-    if (info.columns() > magick.columns() - 10) {
+    const double  xOffsetRatio = env.xOffset()/100.0;
+    const double  yOffsetRatio = env.yOffset()/100.0;
+
+    // Compute pixel layout offsets based on target canvas resolution
+    const size_t  xOffset = static_cast<size_t>(magick.columns() * xOffsetRatio);
+    const size_t  yOffset = static_cast<size_t>(magick.rows() * yOffsetRatio);
+
+    if (info.columns() > magick.columns() - (xOffset * 2)) {
         std::ostringstream os;
-        os << magick.columns() - 10 << "x";
+        os << (magick.columns() - (xOffset * 2)) << "x";
         info.resize(os.str());
     }
 
-    // Drop the badge overlay onto the main photo matrix
+    // Calculate vertical offset relative to the bottom edge of the photo frame (SouthWest style placement)
+    const size_t  compositeY = magick.rows() - info.rows() - yOffset;
+
+    // Drop the badge overlay onto the main photo matrix dynamically using the calculated geometry rules
     magick.composite(info,
-                     Magick::Geometry(info.columns(), info.rows(), 10, magick.rows() - info.rows() - 10),
+                     Magick::Geometry(info.columns(), info.rows(), xOffset, compositeY),
                      Magick::OverCompositeOp);
 }
 }
