@@ -29,7 +29,9 @@ class ImgXfrm {
 	}
 
 	if (!magick.isValid()) {
-	    magick.read( Magick::Blob(preview.pData(), preview.size()) );
+	    const auto  blob = Magick::Blob(preview.pData(), preview.size());
+	    _preRead(blob);
+	    magick.read(blob);
 	}
 	_transform();
     }
@@ -39,6 +41,7 @@ class ImgXfrm {
         : preview(preview_), env(env_), magick(magick_)
     { }
 
+    virtual void  _preRead(const Magick::Blob&) const { }
     virtual void  _transform() const = 0;
 
     // conditions for tranform op are met
@@ -53,6 +56,7 @@ struct ImgXfrmResize : public ImgXfrm
 
     const unsigned  previewIdx;  // which preivew this was
     
+    void  _preRead(const Magick::Blob&) const override;
     void  _transform() const override;
     bool  _valid() const override;
 };

@@ -21,6 +21,46 @@ bool  ImgXfrmResize::_valid() const
     return (preview.width() > PREVIEW_LIMIT || preview.height() > PREVIEW_LIMIT);
 }
 
+void  ImgXfrmResize::_preRead(const Magick::Blob& blob_) const
+{
+    try
+    {
+        Magick::Image  pingImage;
+        pingImage.ping(blob_);
+        const std::string  format = pingImage.magick();
+
+        const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
+
+        // Ensure buffer is large enough for "65535x65535\0" (at least 12 bytes)
+        char  hint[16] = { 0 };
+
+        if (format == "JPEG" || format == "JPG") {
+            /* libjpeg-turbo hardware SIMD decode downscale hint
+             * It MUST be an absolute "WidthxHeight" box ceiling.
+             * Aspect ratio will still be natively preserved by the decoder.
+	     */
+            snprintf(hint, sizeof(hint), "%dx%d", PREVIEW_LIMIT, PREVIEW_LIMIT);
+            magick.defineValue("jpeg", "size", hint);
+        }
+        else if (format == "PNG") {
+            /* PNG Decoder Optimization Hint
+             * PNG geometries can use standard ImageMagick geometry shortcuts ("1200x" or "x1200")
+	     */
+            snprintf(hint, sizeof(hint),
+		(pingImage.rows() < pingImage.columns()) ?  "%dx" : "x%d",
+		PREVIEW_LIMIT);
+            magick.defineValue("png", "size", hint);
+        }
+	else {
+	    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "Pre-read optimization not available for %s", format.c_str());
+	}
+    }
+    catch (const std::exception& ex)
+    {
+        g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "Pre-read optimization skipped: %s", ex.what());
+    }
+}
+
 void  ImgXfrmResize::_transform() const
 {
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
