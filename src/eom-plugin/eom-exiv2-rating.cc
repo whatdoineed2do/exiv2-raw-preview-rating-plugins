@@ -189,6 +189,9 @@ eom_exiv2_rating_plugin_dispose (GObject *object)
 	    const ExifProxy::History&  h = plugin->exifproxy->history();
 	    std::ostringstream  os;
 	    std::for_each(h.begin(), h.end(), [&os](const auto& e) {
+		if (e.rating == e.finalRating) {
+		    return;
+		}
 		os << e;
 		g_log(G_LOG_DOMAIN_EOM_EXIV2, G_LOG_LEVEL_MESSAGE, "%s", os.str().c_str());
 		os.str("");
