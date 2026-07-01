@@ -8,9 +8,13 @@
 #include <sstream>
 #include <ExifProxy.h>
 
-#define EOM_PLUGIN_RATE_SET    "EomPluginRunExiv2Rating_set"
-#define EOM_PLUGIN_RATE_UNSET  "EomPluginRunExiv2Rating_unset"
-
+#define EOM_PLUGIN_RATE_TOGGLE  "EomPluginExiv2RatingToggle"
+#define EOM_PLUGIN_RATE_UNSET   "EomPluginExiv2Rating0"
+#define EOM_PLUGIN_RATE_1       "EomPluginExiv2Rating1"
+#define EOM_PLUGIN_RATE_2       "EomPluginExiv2Rating2"
+#define EOM_PLUGIN_RATE_3       "EomPluginExiv2Rating3"
+#define EOM_PLUGIN_RATE_4       "EomPluginExiv2Rating4"
+#define EOM_PLUGIN_RATE_5       "EomPluginExiv2Rating5"
 
 #define G_LOG_DOMAIN_EOM_EXIV2 "eom:exiv2-rating"
 
@@ -67,15 +71,19 @@ exiv2rate_cb(GtkAction *action,
     G_GNUC_END_IGNORE_DEPRECATIONS;
 
     const bool  b = [&req, &plugin](){
-#if 0
-	if (strcmp(req, EOM_PLUGIN_RATE_SET) == 0) {
-	    return plugin->exifproxy->cycleRating();
+	if (strcmp(req, EOM_PLUGIN_RATE_TOGGLE) == 0) {
+	    return plugin->exifproxy->fliprating();
 	}
-	if (strcmp(req, EOM_PLUGIN_RATE_UNSET) == 0) {
-	    return plugin->exifproxy->unsetRating();
-	}
-#endif
-	return plugin->exifproxy->fliprating();
+
+	unsigned short  rating = 0;
+	size_t  len = strlen(req);
+        if (len > 0) {
+            char  last_char = req[len - 1];
+            if (last_char >= '0' && last_char <= '5') {
+                rating = last_char - '0';
+            }
+        }
+	return plugin->exifproxy->rate(rating);
     }();
 
     if (b) {
@@ -98,21 +106,23 @@ selection_changed_cb (EomThumbView         *view,
 
 static const gchar* const ui_definition =
     "<ui>"
-      "<menubar name=\"MainMenu\">"
-	"<menu name=\"ToolsMenu\" action=\"Tools\"><separator/>"
-	    "<menuitem name=\"EomPluginExiv2Rating_set\" action=\"" EOM_PLUGIN_RATE_SET "\"/>"
-	    "<menuitem name=\"EomPluginExiv2Rating_reset\" action=\"" EOM_PLUGIN_RATE_UNSET "\"/>"
-	  "<separator/>"
-	"</menu>"
-      "</menubar>"
-	"<popup name=\"ViewPopup\"><separator/>"
-	    "<menuitem action=\"EomPluginRunExiv2Rating_set\"/><separator/>"
-	"</popup>"
+        "<accelerator action='" EOM_PLUGIN_RATE_TOGGLE "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_UNSET "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_1 "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_2 "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_3 "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_4 "' />"
+        "<accelerator action='" EOM_PLUGIN_RATE_5 "' />"
     "</ui>";
 
 static const GtkActionEntry action_entries[] = {
-    { EOM_PLUGIN_RATE_SET,   "document-properties", "EXIF Rate Image",   "R", "EXIF Rate current image", G_CALLBACK (exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_UNSET, "document-properties", "EXIF UnRate Image", "0", "EXIF UnRate current image", G_CALLBACK (exiv2rate_cb) }
+    { EOM_PLUGIN_RATE_TOGGLE, NULL, "toggle EXIF rating", "T", "EXIF toggle rating",   G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_UNSET,  NULL, "Unset EXIF Rating",  "0", "EXIF Unset rating",    G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_1,      NULL, "Set EXIF Rating 1",  "R", "Set EXIF rating to 1", G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_2,      NULL, "Set EXIF Rating 1",  "2", "Set EXIF rating to 2", G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_3,      NULL, "Set EXIF Rating 1",  "3", "Set EXIF rating to 3", G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_4,      NULL, "Set EXIF Rating 1",  "4", "Set EXIF rating to 4", G_CALLBACK(exiv2rate_cb) },
+    { EOM_PLUGIN_RATE_5,      NULL, "Set EXIF Rating 1",  "5", "Set EXIF rating to 5", G_CALLBACK(exiv2rate_cb) }
 };
 
 static void
