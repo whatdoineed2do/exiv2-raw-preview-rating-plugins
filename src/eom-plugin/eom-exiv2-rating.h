@@ -50,8 +50,6 @@ struct _EomExiv2RatingPlugin {
 	PeasExtensionBase parent_instance;
 
 	EomWindow *window;
-	GtkActionGroup *ui_action_group;
-	guint ui_id;
 	struct {
 	    gulong selection;
 	} signal;
