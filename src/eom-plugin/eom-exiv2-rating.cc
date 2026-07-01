@@ -60,42 +60,37 @@ statusbar_set_rating(GtkStatusbar *statusbar,
     gtk_widget_show (GTK_WIDGET (statusbar));
 }
 
-
 extern "C" {
 static void
-exiv2rate_cb(GtkAction *action,
-           EomExiv2RatingPlugin *plugin)
+exiv2rate_cb(GSimpleAction *action,
+             GVariant      *parameter,
+             gpointer       user_data)
 {
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
-    const char*  req = gtk_action_get_name(action);
-    G_GNUC_END_IGNORE_DEPRECATIONS;
+    EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN(user_data);
 
-    const bool  b = [&req, &plugin](){
-	if (strcmp(req, EOM_PLUGIN_RATE_TOGGLE) == 0) {
-	    return plugin->exifproxy->fliprating();
-	}
-
-	unsigned short  rating = 0;
-	size_t  len = strlen(req);
-        if (len > 0) {
-            char  last_char = req[len - 1];
-            if (last_char >= '0' && last_char <= '5') {
-                rating = last_char - '0';
-            }
+    // If no parameter is passed, we default to the toggle behavior
+    const bool b = [&parameter, &plugin]() {
+        if (parameter == NULL) {
+            return plugin->exifproxy->fliprating();
         }
-	return plugin->exifproxy->rate(rating);
+
+        // Safely extract the integer rating value (0 to 5)
+        guint32 rating = g_variant_get_uint32(parameter);
+        if (rating > 5) rating = 0;
+
+        return plugin->exifproxy->rate(static_cast<unsigned short>(rating));
     }();
 
     if (b) {
-	eom_debug_message(DEBUG_PLUGINS, "Rating action updated rating %s %s", plugin->exifproxy->file().c_str(), plugin->exifproxy->rating());
-    }
-    else {
-	eom_debug_message(DEBUG_PLUGINS, "Rating action invalid %s", plugin->exifproxy->file().c_str());
+        eom_debug_message(DEBUG_PLUGINS, "Rating action updated rating %s %s",
+                           plugin->exifproxy->file().c_str(), plugin->exifproxy->rating());
+    } else {
+        eom_debug_message(DEBUG_PLUGINS, "Rating action invalid %s", plugin->exifproxy->file().c_str());
     }
 
     statusbar_set_rating(GTK_STATUSBAR(plugin->statusbar),
-			 EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
-			 *plugin->exifproxy, b);
+                         EOM_THUMB_VIEW(eom_window_get_thumb_view(plugin->window)),
+                         *plugin->exifproxy, b);
 }
 }
 
@@ -104,25 +99,10 @@ selection_changed_cb (EomThumbView         *view,
                       EomExiv2RatingPlugin *plugin);
 
 
-static const gchar* const ui_definition =
-    "<ui>"
-        "<accelerator action='" EOM_PLUGIN_RATE_TOGGLE "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_UNSET "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_1 "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_2 "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_3 "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_4 "' />"
-        "<accelerator action='" EOM_PLUGIN_RATE_5 "' />"
-    "</ui>";
-
-static const GtkActionEntry action_entries[] = {
-    { EOM_PLUGIN_RATE_TOGGLE, NULL, "toggle EXIF rating", "T", "EXIF toggle rating",   G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_UNSET,  NULL, "Unset EXIF Rating",  "0", "EXIF Unset rating",    G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_1,      NULL, "Set EXIF Rating 1",  "R", "Set EXIF rating to 1", G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_2,      NULL, "Set EXIF Rating 1",  "2", "Set EXIF rating to 2", G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_3,      NULL, "Set EXIF Rating 1",  "3", "Set EXIF rating to 3", G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_4,      NULL, "Set EXIF Rating 1",  "4", "Set EXIF rating to 4", G_CALLBACK(exiv2rate_cb) },
-    { EOM_PLUGIN_RATE_5,      NULL, "Set EXIF Rating 1",  "5", "Set EXIF rating to 5", G_CALLBACK(exiv2rate_cb) }
+static const GActionEntry  plugin_actions[] = {
+    // { name, activate_callback, parameter_type, state, change_state_callback, padding }
+    { "exiv2-toggle-rating", exiv2rate_cb, NULL, NULL, NULL, {0} },
+    { "exiv2-set-rating",    exiv2rate_cb, "u",  NULL, NULL, {0} } // "u" stands for uint32 variant type
 };
 
 static void
@@ -209,7 +189,6 @@ static void
 eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 {
     EomExiv2RatingPlugin *plugin = EOM_EXIV2_RATING_PLUGIN (activatable);
-    GtkUIManager *manager;
 
     EomWindow *window = plugin->window;
     GtkWidget *thumbview = eom_window_get_thumb_view (window);
@@ -217,14 +196,32 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 
     eom_debug (DEBUG_PLUGINS);
 
-    manager = eom_window_get_ui_manager (plugin->window);
+    // Add actions to the window's action map
+    g_action_map_add_action_entries (G_ACTION_MAP (window),
+                                     plugin_actions,
+                                     G_N_ELEMENTS (plugin_actions),
+                                     plugin);
 
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
-    plugin->ui_action_group = gtk_action_group_new ("EomExiv2RatingPluginActions");
+    //  Map global key shortcuts (Accelerators) via GtkApplication
+    GtkApplication *app = GTK_APPLICATION (g_application_get_default ());
+    if (app != NULL) {
+        const gchar *accel_t[] = { "T", NULL };
+        const gchar *accel_0[] = { "0", NULL };
+        const gchar *accel_1[] = { "R", NULL };
+        const gchar *accel_2[] = { "2", NULL };
+        const gchar *accel_3[] = { "3", NULL };
+        const gchar *accel_4[] = { "4", NULL };
+        const gchar *accel_5[] = { "5", NULL };
 
-    gtk_action_group_add_actions (plugin->ui_action_group, action_entries,
-	    G_N_ELEMENTS (action_entries), plugin);
+        gtk_application_set_accels_for_action (app, "win.exiv2-toggle-rating", accel_t);
 
+	gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 0)", accel_0);
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 1)", accel_1); // Triggers rating 1 when 'r' is pressed
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 2)", accel_2);
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 3)", accel_3);
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 4)", accel_4);
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating(uint32 5)", accel_5);
+    }
 
     plugin->statusbar = gtk_statusbar_new ();
     gint  minh, nath;
@@ -238,12 +235,6 @@ eom_exiv2_rating_plugin_activate (EomWindowActivatable *activatable)
 			    "selection-changed",
 			    G_CALLBACK (selection_changed_cb), plugin);
 
-    gtk_ui_manager_insert_action_group (manager, plugin->ui_action_group, -1);
-
-    plugin->ui_id = gtk_ui_manager_add_ui_from_string (manager, ui_definition, -1, NULL);
-    G_GNUC_END_IGNORE_DEPRECATIONS;
-    g_warn_if_fail (plugin->ui_id != 0);
-
     selection_changed_cb(EOM_THUMB_VIEW(eom_window_get_thumb_view(window)), plugin);
 }
 
@@ -254,19 +245,20 @@ eom_exiv2_rating_plugin_deactivate (EomWindowActivatable *activatable)
     EomWindow *window = plugin->window;
     GtkWidget *statusbar = eom_window_get_statusbar (window);
     GtkWidget *view = eom_window_get_thumb_view (window);
-    GtkUIManager *manager;
 
     eom_debug (DEBUG_PLUGINS);
 
-    manager = eom_window_get_ui_manager (plugin->window);
+    for (guint i = 0; i < G_N_ELEMENTS (plugin_actions); i++) {
+        g_action_map_remove_action (G_ACTION_MAP (window), plugin_actions[i].name);
+    }
 
-    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-    gtk_ui_manager_remove_ui (manager, plugin->ui_id);
+    GtkApplication *app = GTK_APPLICATION (g_application_get_default ());
+    if (app != NULL) {
+        const gchar *blob[] = {  NULL };
 
-    gtk_ui_manager_remove_action_group (manager, plugin->ui_action_group);
-
-    gtk_ui_manager_ensure_update (manager);
-    G_GNUC_END_IGNORE_DEPRECATIONS
+        gtk_application_set_accels_for_action (app, "win.exiv2-toggle-rating", blob);
+        gtk_application_set_accels_for_action (app, "win.exiv2-set-rating", blob);
+    }
 
 #if GLIB_CHECK_VERSION(2,62,0)
     g_clear_signal_handler (&plugin->signal.selection, view);
