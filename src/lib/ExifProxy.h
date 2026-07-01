@@ -26,13 +26,14 @@ class ExifProxy
     friend std::ostream&  operator<<(std::ostream&, const ExifProxy&);
 
     struct HistoryEvnt {
-        HistoryEvnt(const std::string& f_, const Exiv2::ExifData& exif_, bool rated_)
-            : f(f_), exif(exif_), rated(rated_)
+        HistoryEvnt(const std::string& f_, const Exiv2::ExifData& exif_, const std::string& rating_, const std::string& finalRating_)
+            : f(f_), exif(exif_), rating(rating_), finalRating(finalRating_)
         { }
 
         const std::string      f;
         const Exiv2::ExifData  exif;
-        const bool             rated;
+	const std::string      rating;
+	std::string            finalRating;
     };
 
     using History = std::list<HistoryEvnt>;
@@ -85,6 +86,12 @@ class ExifProxy
     }
 
     const char*  rating();
+
+    enum class Rating {
+	UNSET = 0, ONE, TWO, THREE, FOUR, FIVE
+    };
+    bool  rate(unsigned short);
+    bool  rate(const ExifProxy::Rating);
 
     /* mark the image if its not already rated
      */
