@@ -12,15 +12,22 @@ This project provides 3x plugins:
 
 ![eye of mate screenshot](docs/eom.png)
 
-The available controls, as seen via `for i in $(gsettings list-keys org.gtk.gdk-pixbuf.exiv2-rawpreview); do echo "'$i'  $(gsettings describe org.gtk.gdk-pixbuf.exiv2-rawpreview $i)"; done`:
-  * `scale-limit` - scaling of preview image to display
-  * `convert-srgb` - attempt to convert colourspace to sRGB
-  * `auto-orientate` - disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation
-  * `annotation-font` - font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`)
-  * `annotation-percent-height` - size of overlayed EXIF details based on height (set to 0 to disable and to use explicit `font-size`)
-  * `annotation-font-size` - font size for EXIF
-  * `annotation-x-offset` - overlay EXIF x-offset
-  * `annotation-y-offset` - overlay EXIF y-offset
+The available controls, as seen via:
+```shell
+for i in $(gsettings list-keys org.gtk.gdk-pixbuf.exiv2-rawpreview); do
+    echo "'$i'  $(gsettings describe org.gtk.gdk-pixbuf.exiv2-rawpreview $i)";
+done
+```
+| Key | Description |
+| --- | --- |
+| `scale-limit`|scaling of preview image to display |
+| `convert-srgb` | attempt to convert colourspace to sRGB |
+| `auto-orientate` | disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation |
+| `annotation-font` | font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`) |
+| `annotation-percent-height` | size of overlayed EXIF details based on height (set to 0 to disable and to use explicit `font-size`) |
+| `annotation-font-size` | font size for EXIF |
+| `annotation-x-offset` | overlay EXIF x-offset |
+| `annotation-y-offset` | overlay EXIF y-offset |
 
 ## Intended Usage
 For use when reviewing and making _first cut_ selections from RAW files from within a Linux graphical environment: a precursor ahead of editting your RAW files where a faster lightweight workflow is required (no need for a VM with CaptureNX or Lightroom etc or native Linux RawTherapee etc).
@@ -33,6 +40,11 @@ Using `eog` or `eom`, open any files and use `r` key to toggle rating on the cur
 Ratings are represented in the `XMP Rating` tag with a value of `5`.  Use `exiv2 -px foo.NEF` to validate rating flag is set on the file.
 
 Current rating is displayed on the bottom right of the statusbar.
+
+## Debugging/Logging
+```shell
+G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview eom <args>
+```
 
 ## Dependancies
 Uses `gdk-pixbuf`, `exiv2` and `Image Magick`.  By default the build scripts will try to build all plugins if development dependenacies are satisfied.
