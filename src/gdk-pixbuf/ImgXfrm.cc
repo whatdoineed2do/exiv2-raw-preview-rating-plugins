@@ -492,7 +492,11 @@ void  ImgXfrmAnnotate::_transform() const
         // Generate the background box layer to match the padded text block
         Magick::Image bg(Magick::Geometry(info.columns(), info.rows()), "none");
 
+#if (MagickLibVersion >= 0x700)
         std::vector<Magick::Drawable> draw_list;
+#else
+        std::list<Magick::Drawable> draw_list;
+#endif
         draw_list.push_back(Magick::DrawableFillColor("grey20"));
         draw_list.push_back(Magick::DrawableStrokeColor("none"));
         draw_list.push_back(Magick::DrawableRoundRectangle(
