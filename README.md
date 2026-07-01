@@ -6,11 +6,26 @@ This project provides 3x plugins:
    The largest embedded preview image is dependant on the underlying capture device but the user can choose to scale for easier handling by `gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632`.  Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
 
   The loaded image overlays useful EXIF information to aid image review.
-* 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via the `R` keybinding - relies on `exiv2` for supported EXIF images:
+* 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via keybindings - relies on `exiv2` for supported EXIF images:
   * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
   * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
 
+
 ![eye of mate screenshot](docs/eom.png)
+
+## Key Bindings
+
+| Key binding | Description |
+| --- | --- |
+| `0` | reset/remove EXIF rating |
+| `r` | set EXIF rating to 1 |
+| `2` | set EXIF rating to 2 |
+| `3` | set EXIF rating to 3 |
+| `4` | set EXIF rating to 4 |
+| `5` | set EXIF rating to 5 |
+| `t` | toggle EXIF rating between unset / 5 |
+
+## Settings
 
 The available controls, as seen via:
 ```shell
