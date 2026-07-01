@@ -16,7 +16,6 @@ AC_PROG_INSTALL
 LT_INIT
 PKG_PROG_PKG_CONFIG
 
-AX_CXX_COMPILE_STDCXX([17], [ext], [mandatory])
 AM_CPPFLAGS="-Wall"
 AC_SUBST([AM_CPPFLAGS])
 
@@ -79,7 +78,7 @@ PKG_CHECK_MODULES(PEAS,        [libpeas-1.0     >= 1.20.0])
 fi
 
 
-PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 7.1.1])
+PKG_CHECK_MODULES(IMAGEMAGICK, [Magick++        >= 6.9.9])
 PKG_CHECK_MODULES(EXIV,        [exiv2           >= 0.25])
 
 PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
