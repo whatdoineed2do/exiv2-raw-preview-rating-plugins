@@ -113,6 +113,7 @@ AC_CONFIG_FILES([
     src/lib/Makefile
     src/eog-plugin/Makefile
     src/eom-plugin/Makefile
+    src/eom-reload-size-plugin/Makefile
     src/gdk-pixbuf/Makefile
     src/gdk-pixbuf/data/Makefile
     tests/Makefile
