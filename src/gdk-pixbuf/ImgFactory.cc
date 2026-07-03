@@ -3,6 +3,8 @@
 #include <omp.h>
 
 #include <list>
+#include <iterator>
+#include <algorithm>
 #include <functional>
 #include <thread>
 
@@ -96,23 +98,23 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
      */
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
 
-    Exiv2::PreviewPropertiesList::iterator  p = list.begin();
-    Exiv2::PreviewPropertiesList::iterator  pp = list.end();
     unsigned  i = 0;
-    while (p != list.end())
-    {
-        g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  preview #%d width=%ld height=%ld", i, p->width_, p->height_);
-	if (p->width_ >= PREVIEW_LIMIT || p->height_ >= PREVIEW_LIMIT) {
-	    pp = p;
-            DBG_LOG("preview #", i, "  SELECTED");
-            break;
+    auto  pp = std::find_if(list.begin(), list.end(), [i = 0, PREVIEW_LIMIT](const auto& preview) mutable {
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  preview #%d width=%ld height=%ld", i, preview.width_, preview.height_);
+
+	if (preview.width_ >= PREVIEW_LIMIT || preview.height_ >= PREVIEW_LIMIT) {
+	    DBG_LOG("preview #", i, "  SELECTED");
+	    return true;
 	}
-	++p;
+
 	++i;
-    }
-    if (pp == list.end()) {
-	pp = list.begin();
-        std::advance(pp, --i);
+	return false;
+    });
+
+    /* nothing matched and the list isn't empty, default to the last element
+     */
+    if (pp == list.end() && !list.empty()) {
+	pp = std::prev(list.end());
     }
 
     Exiv2::PreviewImage  preview =  exvprldr_.getPreviewImage(*pp);
