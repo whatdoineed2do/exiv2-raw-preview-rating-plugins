@@ -1,0 +1,9 @@
+[Plugin]
+Module=exiv2-pixbuf-size-reload
+IAge=2
+Name=Exiv2 RAW preview large reloader
+Icon=document-properties
+Description=Request largest embedded preview image from gdk-pixbuf Exiv2 raw preview loader
+Authors=Ray Fung
+Copyright=Copyright © 2026 Ray Fung
+Website=@PACKAGE_URL@
