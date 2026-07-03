@@ -18,7 +18,7 @@ namespace  Exiv2GdkPxBufLdr
 bool  ImgXfrmResize::_valid() const
 {
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
-    return (preview.width() > PREVIEW_LIMIT || preview.height() > PREVIEW_LIMIT);
+    return (PREVIEW_LIMIT > 0 && ( preview.width() > PREVIEW_LIMIT || preview.height() > PREVIEW_LIMIT) );
 }
 
 void  ImgXfrmResize::_preRead(const Magick::Blob& blob_) const

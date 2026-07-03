@@ -34,7 +34,7 @@
     <key name="scale-limit" type="i">
       <default>1632</default>
       <summary>Scale larger preview images to this size</summary>
-      <description>Limit the size of the preview image(s) found to this size when choising preview to extract and present to pixbuf loader</description>
+      <description>Limit the size of the preview image(s) found to this size when choising preview to extract and present to pixbuf loader or 0 for largest available</description>
     </key>
     <key name="auto-orientate" type="b">
       <default>false</default>

@@ -99,7 +99,7 @@ ImgFactory::Buf&  ImgFactory::create(const unsigned char* buf_, ssize_t bufsz_, 
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
 
     unsigned  i = 0;
-    auto  pp = std::find_if(list.begin(), list.end(), [i = 0, PREVIEW_LIMIT](const auto& preview) mutable {
+    auto  pp = PREVIEW_LIMIT == 0 ? list.end() : std::find_if(list.begin(), list.end(), [i = 0, PREVIEW_LIMIT](const auto& preview) mutable {
 	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "  preview #%d width=%ld height=%ld", i, preview.width_, preview.height_);
 
 	if (preview.width_ >= PREVIEW_LIMIT || preview.height_ >= PREVIEW_LIMIT) {

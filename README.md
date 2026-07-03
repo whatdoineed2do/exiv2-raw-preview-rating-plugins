@@ -35,7 +35,7 @@ done
 ```
 | Key | Description |
 | --- | --- |
-| `scale-limit`|scaling of preview image to display |
+| `scale-limit`|scaling of preview image to display (0 for largest availabe) |
 | `convert-srgb` | attempt to convert colourspace to sRGB |
 | `auto-orientate` | disable/enable correct image orientation; you may want this to be _false_ and allow image viewers to auto orientate to avoid double rotation |
 | `annotation-font` | font for overlayed EXIF (names as recognised by `ImageMagick`, see: `convert -list font`) |
