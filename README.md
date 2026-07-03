@@ -13,18 +13,6 @@ This project provides 3x plugins:
 
 ![eye of mate screenshot](docs/eom.png)
 
-## Key Bindings
-
-| Key binding | Description |
-| --- | --- |
-| `0` | reset/remove EXIF rating |
-| `r` | set EXIF rating to 1 |
-| `2` | set EXIF rating to 2 |
-| `3` | set EXIF rating to 3 |
-| `4` | set EXIF rating to 4 |
-| `5` | set EXIF rating to 5 |
-| `t` | toggle EXIF rating between unset / 5 |
-
 ## Settings
 
 The available controls, as seen via:
@@ -47,7 +35,7 @@ done
 ## Intended Usage
 For use when reviewing and making _first cut_ selections from RAW files from within a Linux graphical environment: a precursor ahead of editting your RAW files where a faster lightweight workflow is required (no need for a VM with CaptureNX or Lightroom etc or native Linux RawTherapee etc).
 
-The _scale-limit_ is meant to help optimise needless scaling of images: if you have a 36 megapixel RAW image it may have a small number of embedded preview images of varying and increasing sizes, which is what Nikon cameras tend to do: a Nikon RAW file may embed preview images of 570x, 1632x and full (36mp) 7360x. If your screen is only 1600 pixels wide, there may be no point in using the 36mp preview image that is then scaled to fit screen.  In such an situation where you are working with a known size of embedded preview image sizes, you can set _scale-limit_ to the desired size to avoid potential needless image scaling for display.
+The `scale-limit` is meant to help optimise needless scaling of images: if you have a 36 megapixel RAW image it may have a small number of embedded preview images of varying and increasing sizes, which is what Nikon cameras tend to do: a Nikon RAW file may embed preview images of 570x, 1632x and full (36mp) 7360x. If your screen is only 1600 pixels wide, there may be no point in using the 36mp preview image that is then scaled to fit screen.  In such an situation where you are working with a known size of embedded preview image sizes, you can set `scale-limit` to the desired size to avoid potential needless image scaling for display.
 
 ## Setting/Unsetting EXIF/XMP Rating
 Using `eog` or `eom`, open any files and use `r` key to toggle rating on the current image file - the rating is only saved when moving away from the current image;  if you toggle multiple times that leaves the file in the original _rated_ state, no rating update is written to the file.
@@ -56,10 +44,20 @@ Ratings are represented in the `XMP Rating` tag with a value of `5`.  Use `exiv2
 
 Current rating is displayed on the bottom right of the statusbar.
 
+| Key binding | Description |
+| :---: | --- |
+| `0` | reset/remove EXIF rating |
+| `r` | set EXIF rating to 1 |
+| `2` | set EXIF rating to 2 |
+| `3` | set EXIF rating to 3 |
+| `4` | set EXIF rating to 4 |
+| `5` | set EXIF rating to 5 |
+| `t` | toggle EXIF rating between unset / 5 |
+
 ## Debugging/Logging
 ```shell
-G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview eom <args>
+G_MESSAGES_DEBUG="gdk-pixbuf.exiv2-rawpreview eom:exiv2-rating" eom <args>
 ```
 
 ## Dependancies
-Uses `gdk-pixbuf`, `exiv2` and `Image Magick`.  By default the build scripts will try to build all plugins if development dependenacies are satisfied.
+Uses `gdk-pixbuf`, `exiv2` and `ImageMagick`.  By default the build scripts will try to build all plugins if development dependenacies are satisfied.
