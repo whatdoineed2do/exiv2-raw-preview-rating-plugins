@@ -37,8 +37,7 @@ class Env
 
     void  update(GSettings* settings_, const gchar* key_);
 
-    unsigned short  previewScaleLimit() const
-    { return _previewScaleLimit; }
+    unsigned short  previewScaleLimit() const;
 
     bool  convertSRGB() const
     { return _convertSRGB; }

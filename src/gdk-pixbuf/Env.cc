@@ -110,4 +110,10 @@ void  Env::update(GSettings* settings_, const gchar* key_)
 	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_WARNING, "unhandled gsettings key '%s' change", key_);
     }
 }
+
+unsigned short Env::previewScaleLimit() const
+{
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO, "Pixbuf loader is querying limit: %d", _previewScaleLimit);
+    return (unsigned short)g_settings_get_int(_settings, KEY_SCALE_LIMIT);
+}
 }

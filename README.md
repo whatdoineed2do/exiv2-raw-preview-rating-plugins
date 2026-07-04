@@ -1,6 +1,6 @@
 # `gdk pixbuf` Viewer for _RAW_ preview images and Gnome EOG/EOM EXIF rating plugins
 
-This project provides 3x plugins:
+This project provides a number of plugins:
 * a `gdk pixbuf loader` that handles RAW files (primarily Nikon NEF, Canon CR2 and DNGs) that loads the largest embedded preview image available (via `exiv2`) - the [RAW file support is dependant on `exiv2`](https://dev.exiv2.org/projects/exiv2/wiki/Supported_image_formats).
 
    The largest embedded preview image is dependant on the underlying capture device but the user can choose to scale for easier handling by `gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632`.  Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
@@ -9,6 +9,7 @@ This project provides 3x plugins:
 * 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via keybindings - relies on `exiv2` for supported EXIF images:
   * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
   * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
+* a `eom` plugin that can force load the largest RAW preview image for the current file being viewed - enables easy review: first with a potentially smaller image for fast load and then for a detailed review
 
 
 ![eye of mate screenshot](docs/eom.png)
@@ -37,7 +38,7 @@ For use when reviewing and making _first cut_ selections from RAW files from wit
 
 The `scale-limit` is meant to help optimise needless scaling of images: if you have a 36 megapixel RAW image it may have a small number of embedded preview images of varying and increasing sizes, which is what Nikon cameras tend to do: a Nikon RAW file may embed preview images of 570x, 1632x and full (36mp) 7360x. If your screen is only 1600 pixels wide, there may be no point in using the 36mp preview image that is then scaled to fit screen.  In such an situation where you are working with a known size of embedded preview image sizes, you can set `scale-limit` to the desired size to avoid potential needless image scaling for display.
 
-## Setting/Unsetting EXIF/XMP Rating
+## Key Bidings
 Using `eog` or `eom`, open any files and use `r` key to toggle rating on the current image file - the rating is only saved when moving away from the current image;  if you toggle multiple times that leaves the file in the original _rated_ state, no rating update is written to the file.
 
 Ratings are represented in the `XMP Rating` tag with a value of `5`.  Use `exiv2 -px foo.NEF` to validate rating flag is set on the file.
@@ -53,10 +54,11 @@ Current rating is displayed on the bottom right of the statusbar.
 | `4` | set EXIF rating to 4 |
 | `5` | set EXIF rating to 5 |
 | `t` | toggle EXIF rating between unset / 5 |
+| `v` | force load the largest preview image of RAW file |
 
 ## Debugging/Logging
 ```shell
-G_MESSAGES_DEBUG="gdk-pixbuf.exiv2-rawpreview eom:exiv2-rating" eom <args>
+G_MESSAGES_DEBUG="gdk-pixbuf.exiv2-rawpreview eom:exiv2-rating eom:largest-rawpreview" eom <args>
 ```
 
 ## Dependancies
