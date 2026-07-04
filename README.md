@@ -3,7 +3,11 @@
 This project provides a number of plugins:
 * a `gdk pixbuf loader` that handles RAW files (primarily Nikon NEF, Canon CR2 and DNGs) that loads the largest embedded preview image available (via `exiv2`) - the [RAW file support is dependant on `exiv2`](https://dev.exiv2.org/projects/exiv2/wiki/Supported_image_formats).
 
-   The largest embedded preview image is dependant on the underlying capture device but the user can choose to scale for easier handling by `gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632`.  Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
+   The largest embedded preview image is dependant on the underlying capture device but the user can choose to scale for easier handling by:
+   ```shell
+   gsettings set org.gtk.gdk-pixbuf.exiv2-rawpreview scale-limit 1632
+   ```
+   Set `G_MESSAGES_DEBUG=gdk-pixbuf.exiv2-rawpreview` to examine values as `pixbuf` runs.
 
   The loaded image overlays useful EXIF information to aid image review.
 * 2x Linux desktop image viewer plugins that can set/unset EXIF/XMP rating via keybindings - relies on `exiv2` for supported EXIF images:
