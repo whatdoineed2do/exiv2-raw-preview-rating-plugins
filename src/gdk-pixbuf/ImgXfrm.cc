@@ -98,6 +98,26 @@ void  ImgXfrmResize::_transform() const
 {
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
 
+    /* If the hardware pre-read optimization already kicked in, the image's
+     * maximum dimension will have been scaled down to its closest power-of-two
+     * step (e.g., 2144px instead of 4288px).
+     *
+     * Since we accept this optimized size as 'close enough', we bypass the
+     * expensive software Lanczos filter entirely.
+     */
+    const size_t current_max_edge = std::max(magick.columns(), magick.rows());
+
+    /* If we are already within a reasonable boundary of the limit, skip resizing!
+     * (We check current_max_edge > PREVIEW_LIMIT to allow normal downsizing if needed,
+     * but if you want to skip *all* second-stage scaling when optimized, check if it was pre-shrunk)
+     */
+    if (current_max_edge <= (PREVIEW_LIMIT * 1.5)) {
+        g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG,
+              "  bypassing software scale; accepting hardware optimized bounds (%ldx%ld)",
+              magick.columns(), magick.rows());
+        return;
+    }
+
     magick.filterType(Magick::LanczosFilter);
     magick.quality(70);
     char  tmp[8];  // its a short, can't be more than 65535
