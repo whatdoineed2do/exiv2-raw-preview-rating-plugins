@@ -22,19 +22,7 @@ class ImgXfrm {
     const Env&  env;
     Magick::Image&  magick;
 
-    void  transform() const
-    {
-	if (!_valid()) {
-	    return;
-	}
-
-	if (!magick.isValid()) {
-	    const auto  blob = Magick::Blob(preview.pData(), preview.size());
-	    _preRead(blob);
-	    magick.read(blob);
-	}
-	_transform();
-    }
+    void  transform() const;
 
   protected:
     ImgXfrm(const Exiv2::PreviewImage&  preview_, const Env&  env_, Magick::Image& magick_)

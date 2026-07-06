@@ -15,6 +15,28 @@
 namespace  Exiv2GdkPxBufLdr
 {
 
+void  ImgXfrm::transform() const
+{
+    if (!_valid()) {
+	return;
+    }
+
+    if (!magick.isValid()) {
+	const auto  blob = Magick::Blob(preview.pData(), preview.size());
+	_preRead(blob);
+
+	const auto  start = std::chrono::high_resolution_clock::now();
+	magick.read(blob);
+	const auto  end = std::chrono::high_resolution_clock::now();
+	const std::chrono::duration<double>  elapsed = end - start;
+
+	g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_INFO,
+	      "  [HW DECODE] decompressed preview layout to %ldx%ld in %f seconds",
+              magick.columns(), magick.rows(), elapsed.count());
+    }
+    _transform();
+}
+
 bool  ImgXfrmResize::_valid() const
 {
     const unsigned short  PREVIEW_LIMIT = env.previewScaleLimit();
