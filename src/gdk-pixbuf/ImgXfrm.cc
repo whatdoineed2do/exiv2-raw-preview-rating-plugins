@@ -35,12 +35,45 @@ void  ImgXfrmResize::_preRead(const Magick::Blob& blob_) const
         char  hint[16] = { 0 };
 
         if (format == "JPEG" || format == "JPG") {
+            /* Dynamically determine the best hardware power-of-two bounding box.
+             * We treat PREVIEW_LIMIT as a target floor, finding the smallest SIMD factor
+             * (1/2, 1/4, or 1/8) that keeps the decoded image dimension >= PREVIEW_LIMIT.
+             */
+            const size_t  maxEdge = std::max(pingImage.columns(), pingImage.rows());
+            unsigned short  optimisedlimit = PREVIEW_LIMIT;
+
+            if (PREVIEW_LIMIT > 0 && maxEdge > PREVIEW_LIMIT) {
+                if (maxEdge * 0.125 >= PREVIEW_LIMIT) {
+                    optimisedlimit = static_cast<unsigned short>(maxEdge * 0.125);
+                }
+                else if (maxEdge * 0.25 >= PREVIEW_LIMIT) {
+                    optimisedlimit = static_cast<unsigned short>(maxEdge * 0.25);
+                }
+                else if (maxEdge * 0.5 >= PREVIEW_LIMIT) {
+                    optimisedlimit = static_cast<unsigned short>(maxEdge * 0.5);
+                }
+            }
+
             /* libjpeg-turbo hardware SIMD decode downscale hint
              * It MUST be an absolute "WidthxHeight" box ceiling.
              * Aspect ratio will still be natively preserved by the decoder.
+             * For a 12MP D300 asset (4288x2848) with a 1632 limit, this generates "2144x2144".
 	     */
-            snprintf(hint, sizeof(hint), "%dx%d", PREVIEW_LIMIT, PREVIEW_LIMIT);
+
+	    /* Determine structural boundaries matching the orientation */
+            if (pingImage.rows() > pingImage.columns()) {
+                // Portrait: Rows (height) is dominant.
+                // Scale the horizontal axis down proportionally to match the vertical constraint.
+                const unsigned short  optimisedwidth = static_cast<unsigned short>(optimisedlimit * ((double)pingImage.columns() / pingImage.rows()));
+                snprintf(hint, sizeof(hint), "%dx%d", optimisedwidth, optimisedlimit);
+            } else {
+                // Landscape: Columns (width) is dominant.
+                const unsigned short  optimisedheight = static_cast<unsigned short>(optimisedlimit * ((double)pingImage.rows() / pingImage.columns()));
+                snprintf(hint, sizeof(hint), "%dx%d", optimisedlimit, optimisedheight);
+            }
             magick.defineValue("jpeg", "size", hint);
+
+	    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "layout optimsation %s", hint);
         }
         else if (format == "PNG") {
             /* PNG Decoder Optimization Hint
