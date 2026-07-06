@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <functional>
 #include <thread>
+#include <jpeglib.h>
 
 #include <glib.h>
 
@@ -29,7 +30,13 @@ ImgFactory::ImgFactory()
       _srgbICC(_profiles.srgb().data, _profiles.srgb().size)
 {
     Magick::InitializeMagick("");
-    DBG_LOG("OMP: cpus=", omp_get_num_procs(), " threads=", omp_get_max_threads(), "  setting resource limits to #threads");
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "OMP: cpus=%d threads=%d h/w concurrency=%d setting resource limits to threads", omp_get_num_procs(), omp_get_max_threads(), std::thread::hardware_concurrency());
+#if defined(WITH_SIMD) || defined(LIBJPEG_TURBO_VERSION)
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "JPEG Decoder: Hardware Optimized (libjpeg-turbo SIMD, %d)", LIBJPEG_TURBO_VERSION_NUMBER);
+#else
+    g_log(Exiv2GdkPxBufLdr::G_DOMAIN, G_LOG_LEVEL_DEBUG, "JPEG Decoder: WARNING - Legacy Scalar Software Fallback Active (Slow)");
+#endif
+
     Magick::ResourceLimits::thread(std::thread::hardware_concurrency());
 }
 
