@@ -56,8 +56,10 @@ Env::Env()
 
 Env::~Env()
 {
-    g_signal_handler_disconnect(G_OBJECT(_settings), _changesig);
-    g_object_unref(_settings);
+    if (_settings) {
+	g_signal_handler_disconnect(G_OBJECT(_settings), _changesig);
+	g_object_unref(_settings);
+    }
 }
 
 void  Env::update(GSettings* settings_, const gchar* key_)

@@ -65,6 +65,8 @@ class ImgFactory
 	void  _assign(const Buf& rhs_)
 	{ 
 	    if (rhs_._buf == NULL) {
+		_buf = NULL;
+		_sz = 0;
 		return;
 	    }
 
