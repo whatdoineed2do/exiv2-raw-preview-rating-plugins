@@ -27,6 +27,7 @@ struct _EomRawPreviewPlugin
     gulong     selection_id;
     int        previewLimit;
     gchar     *boostedImageUri;
+    guint      timeout_id;
 };
 
 struct _EomRawPreviewPluginClass

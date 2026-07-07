@@ -55,6 +55,9 @@ on_restore_timeout_cb (gpointer user_data)
         plugin->previewLimit = -1;
     }
 
+    // Unregister our internal timer ID reference since it finished executing
+    plugin->timeout_id = 0;
+
     // Return FALSE so this timer only executes ONCE
     return G_SOURCE_REMOVE;
 }
@@ -85,6 +88,7 @@ on_load_largest_preview_triggered (GSimpleAction *action,
             g_log (G_LOG_DOMAIN_EOM_RAW_PREVIEW, G_LOG_LEVEL_INFO,
                    "%s. Image is already maximized. Bypassing wasteful reload.", current_uri);
             g_free (current_uri);
+            g_object_unref (image);
             return;
         }
     }
@@ -111,9 +115,16 @@ on_load_largest_preview_triggered (GSimpleAction *action,
     plugin->boostedImageUri = current_uri; // Transfers ownership of the string allocated by g_file_get_uri
 
     eom_window_reload_image (window);
+    
+    g_object_unref (image);
+
+    // If an older timer handle is still pending, clear it before creating a new one
+    if (plugin->timeout_id > 0) {
+        g_source_remove (plugin->timeout_id);
+    }
 
     // Schedule a safety window of 300ms to allow the background thread to run
-    g_timeout_add (300, on_restore_timeout_cb, plugin);
+    plugin->timeout_id = g_timeout_add (300, on_restore_timeout_cb, plugin);
 }
 }
 
@@ -164,12 +175,19 @@ eom_raw_preview_plugin_init (EomRawPreviewPlugin *plugin)
 {
     plugin->previewLimit = -1;
     plugin->boostedImageUri = NULL;
+    plugin->timeout_id = 0; // Initialize tracking ID to 0
 }
 
 static void
 eom_raw_preview_plugin_dispose (GObject *object)
 {
     EomRawPreviewPlugin *plugin = EOM_RAW_PREVIEW_PLUGIN (object);
+
+    // Safely remove the timeout hook if it's currently scheduled to run
+    if (plugin->timeout_id > 0) {
+        g_source_remove (plugin->timeout_id);
+        plugin->timeout_id = 0;
+    }
 
     if (plugin->boostedImageUri != NULL) {
         g_free (plugin->boostedImageUri);
@@ -208,6 +226,12 @@ eom_raw_preview_plugin_deactivate (EomWindowActivatable *activatable)
 {
     EomRawPreviewPlugin *plugin = EOM_RAW_PREVIEW_PLUGIN (activatable);
     EomWindow *window = plugin->window;
+
+    // Kill running timers during deactivation before references are unmapped
+    if (plugin->timeout_id > 0) {
+        g_source_remove (plugin->timeout_id);
+        plugin->timeout_id = 0;
+    }
 
     GtkApplication *app = GTK_APPLICATION (g_application_get_default ());
     if (app != NULL) {
