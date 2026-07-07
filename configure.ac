@@ -86,6 +86,13 @@ PKG_CHECK_MODULES(GDKPIXBUF,   [gdk-pixbuf-2.0  >= 2.36.9])
 PKG_CHECK_VAR([GDKPIXBUF_MODULES_DIR],[gdk-pixbuf-2.0],[gdk_pixbuf_moduledir])
 PKG_CHECK_VAR([GDKPIXBUF_LOADER_CACHE],[gdk-pixbuf-2.0],[gdk_pixbuf_cache_file])
 
+AC_PATH_PROG([IMGPREXTR], [imgprextr])
+AS_IF([test "x$IMGPREXTR" = "x"], [
+  AC_MSG_WARN([Optional utility 'imgprextr' was not found in your PATH at compile time. Defaulting path to /usr/bin/imgprextr.])
+  IMGPREXTR="/usr/bin/imgprextr"
+])
+AC_DEFINE_UNQUOTED([IMGPREXTR_PATH], ["$IMGPREXTR"], [Absolute path to the imgprextr executable])
+
 AC_ARG_ENABLE(debug,
         AS_HELP_STRING([--enable-debug],[enable debug code (default is no)]),
         [ debug="${enableval}" ], [ debug=no ] )
@@ -116,6 +123,7 @@ AC_CONFIG_FILES([
     src/eom-reload-size-plugin/Makefile
     src/gdk-pixbuf/Makefile
     src/gdk-pixbuf/data/Makefile
+    src/eom-imgprextr-plugin/Makefile
     tests/Makefile
 ])
 AC_OUTPUT
