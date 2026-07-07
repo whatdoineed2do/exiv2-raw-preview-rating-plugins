@@ -29,13 +29,5 @@ libimgprextr_plugin_la_LDFLAGS = \
 # Note: Use plugin__DATA if your build tool demands explicit directory binding
 plugin_DATA = imgprextr.plugin
 
-# GSettings compilation pipeline integration
-gsettings_SCHEMAS = org.mate.eom.plugins.imgprextr.gschema.xml
-@GSETTINGS_RULES@
-
 EXTRA_DIST = \
-    $(plugin_DATA) \
-    $(gsettings_SCHEMAS)
-
-CLEANFILES = \
-    $(gsettings_SCHEMAS:.xml=.valid)
+    $(plugin_DATA)
