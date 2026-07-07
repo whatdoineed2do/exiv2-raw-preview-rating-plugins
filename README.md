@@ -14,7 +14,8 @@ This project provides a number of plugins:
   * [Eye of Gnome](https://wiki.gnome.org/Apps/EyeOfGnome) (`eog`) 
   * [Eye of Mate](https://wiki.mate-desktop.org/mate-desktop/applications/eom/) (`eom`) 
 * a `eom` plugin that can force load the largest RAW preview image for the current file being viewed - enables easy review: first with a potentially smaller image for fast load and then for a detailed review
-
+* a `eom` plugin leveraging **external [`imgprextr` utility](https://github.com/whatdoineed2do/imgcat)** to trigger extract of largest RAW preview image
+   The output destination folder path for the `imgprextr` companion binary resolves dynamically using the following descending priority order: `$EOM_GDKPIXBUF_EXIV2_OUTDIR`, `$TMPDIR`, fallback to `/tmp`
 
 ![eye of mate screenshot](docs/eom.png)
 
@@ -59,6 +60,7 @@ Current rating is displayed on the bottom right of the statusbar.
 | `5` | set EXIF rating to 5 |
 | `t` | toggle EXIF rating between unset / 5 |
 | `v` | force load the largest preview image of RAW file |
+| `x` | trigger background full raw extraction using `imgprextr` |
 
 ## Debugging/Logging
 ```shell

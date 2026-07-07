@@ -1,0 +1,8 @@
+[Plugin]
+Module=imgprextr-plugin
+IAge=3
+Name=imgprextr Raw Preview Extractor Link
+Description=Invokes external imgprextr utility to extract/convert RAW file
+Authors=Ray Fung
+Copyright=Copyright © 2026
+Builtin=false

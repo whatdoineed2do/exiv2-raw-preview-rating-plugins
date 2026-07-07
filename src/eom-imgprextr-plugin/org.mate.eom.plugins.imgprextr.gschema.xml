@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.mate.eom.plugins.imgprextr" path="/org/mate/eom/plugins/imgprextr/">
+    <key name="command-template" type="s">
+      <default>""</default>
+      <summary>Custom Command Override Template String</summary>
+      <description>Empty strings default to fallback automatic resolution logic using env paths.</description>
+    </key>
+  </schema>
+</schemalist>
