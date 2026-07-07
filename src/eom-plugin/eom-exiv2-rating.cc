@@ -324,9 +324,23 @@ selection_changed_cb (EomThumbView         *view,
 	return;
     }
     EomImage*  image = eom_thumb_view_get_first_selected_image (view);
+    if (image == NULL) {
+	return;
+    }
 
     GFile* file = eom_image_get_file(image);
+    if (file == NULL) {
+	// ie a network path that has no underlying file
+        g_object_unref(image);
+        return;
+    }
+
     char* path = g_file_get_path(file);
+    if (path == NULL) {
+        g_object_unref(file);
+        g_object_unref(image);
+        return;
+    }
 
     plugin->exifproxy->ref(path);
 
