@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Define script name and base directory for temporary files safely
+SCRIPT_NAME=$(basename "$0")
+TMP_DIR="${TMPDIR:-/tmp}"
+TMP_PREFIX="${TMP_DIR}/.${SCRIPT_NAME}-$$"
+
+# Ensure automatic removal of all temporary files on normal exit or interruption (SIGINT, SIGTERM)
+trap 'rm -f "${TMP_PREFIX}"*' EXIT
+
 # Default values
 AUDIO_FILE=""
 HEADER_IMG=""
@@ -92,6 +100,13 @@ if [ "$NUM_IMAGES" -eq 0 ]; then
     exit 1
 fi
 
+# Standardize Header and Tail images to exact 1920x1080 temp files to prevent input geometry drops
+TMP_HEADER="${TMP_PREFIX}-header.jpg"
+TMP_TAIL="${TMP_PREFIX}-tail.jpg"
+
+ffmpeg -y -i "$HEADER_ABS" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black" -pix_fmt yuv420p -vframes 1 "$TMP_HEADER" 2>/dev/null
+ffmpeg -y -i "$TAIL_ABS"   -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black" -pix_fmt yuv420p -vframes 1 "$TMP_TAIL" 2>/dev/null
+
 # 3. Handle Duration Calculation
 FIXED_OVERHEAD="4.6"
 slide_duration="$FIXED_DURATION"
@@ -137,14 +152,14 @@ if [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ]; then
     fi
 fi
 
-# 5. Build Input Mappings using Bash Arrays (Fixes Space Mismatch)
+# 5. Build Input Mappings using Bash Arrays
 echo "Building playlist timeline for $NUM_IMAGES photos..."
 FFMPEG_INPUT_ARGS=()
 FILTER_COMPLEX=""
 INDEX=0
 
-# Add Header
-FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$HEADER_ABS")
+# Add Header (uses normalized temp header)
+FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$TMP_HEADER")
 FILTER_COMPLEX+="[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,format=yuv420p[v$INDEX];"
 INDEX=$((INDEX + 1))
 
@@ -182,8 +197,8 @@ FFMPEG_INPUT_ARGS+=("-f" "lavfi" "-t" "0.3" "-i" "color=c=black:s=1920x1080:r=30
 FILTER_COMPLEX+="[$INDEX:v]format=yuv420p[v$INDEX];"
 INDEX=$((INDEX + 1))
 
-# Add Tail
-FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$TAIL_ABS")
+# Add Tail (uses normalized temp tail)
+FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$TMP_TAIL")
 FILTER_COMPLEX+="[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,format=yuv420p[v$INDEX];"
 INDEX=$((INDEX + 1))
 
@@ -219,7 +234,6 @@ FILTER_COMPLEX+=";[video_out]format=nv12[final_video_out]"
 
 # 7. Execute Intel QSV Hardware Encoder Command safely with Array Expansion
 echo "Encoding video using Intel Quick Sync..."
-# Crucial addition: We add '-t' right before the output name to force a hard cutoff at the calculated duration.
 ffmpeg -y -loglevel info -stats "${FFMPEG_INPUT_ARGS[@]}" \
   -filter_complex "$FILTER_COMPLEX" \
   "${AUDIO_OUT_MAP[@]}" \
@@ -235,4 +249,3 @@ else
     echo "Error: Video compilation failed inside FFmpeg during processing loop." >&2
     exit 1
 fi
-
