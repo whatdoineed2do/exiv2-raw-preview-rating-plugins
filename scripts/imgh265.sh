@@ -4,6 +4,7 @@
 SCRIPT_NAME=$(basename "$0")
 TMP_DIR="${TMPDIR:-/tmp}"
 TMP_PREFIX="${TMP_DIR}/.${SCRIPT_NAME}-$$"
+FILTER_SCRIPT="${TMP_PREFIX}-filter.ffscript"
 
 # Ensure automatic removal of all temporary files on normal exit or interruption (SIGINT, SIGTERM)
 trap 'rm -f "${TMP_PREFIX}"*' EXIT
@@ -152,62 +153,67 @@ if [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ]; then
     fi
 fi
 
-# 5. Build Input Mappings using Bash Arrays
-echo "Building playlist timeline for $NUM_IMAGES photos..."
-FFMPEG_INPUT_ARGS=()
-FILTER_COMPLEX=""
+# 5. Build Filter Script File directly to avoid ARG_MAX issues
+echo "Building filter script and timeline for $NUM_IMAGES photos..."
+
+# Write filter string directly to a temporary file instead of a Bash variable
+FILTER_SCRIPT="${TMP_PREFIX}-filter.ffscript"
+> "$FILTER_SCRIPT"
+
 INDEX=0
 
-# Add Header (uses normalized temp header)
+# Add Header
 FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$TMP_HEADER")
-FILTER_COMPLEX+="[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,format=yuv420p[v$INDEX];"
+echo "[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p[v$INDEX];" >> "$FILTER_SCRIPT"
 INDEX=$((INDEX + 1))
 
 # Add Pre-gap (Black frame)
 FFMPEG_INPUT_ARGS+=("-f" "lavfi" "-t" "0.3" "-i" "color=c=black:s=1920x1080:r=30")
-FILTER_COMPLEX+="[$INDEX:v]format=yuv420p[v$INDEX];"
+echo "[$INDEX:v]setsar=1,format=yuv420p[v$INDEX];" >> "$FILTER_SCRIPT"
 INDEX=$((INDEX + 1))
 
-# Add Slides Loop with Smart Aspect Ratio Detection
-if [ "$CROP_MODE" = true ]; then
-    echo "Layout style: Smart Crop (Landscape fills screen, Portrait uses blurred edges)."
-else
-    echo "Layout style: Blurred Background Padding for all images."
-fi
-
+# Add Slides Loop
 for img_abs in "${FINAL_IMAGES[@]}"; do
     FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "$slide_duration" "-i" "$img_abs")
     
     if [ "$CROP_MODE" = true ]; then
-        FILTER_COMPLEX+="[$INDEX:v]format=yuv420p,split[bg][fg];"
-        FILTER_COMPLEX+="[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];"
-        FILTER_COMPLEX+="[fg]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled];"
-        FILTER_COMPLEX+="[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080[v$INDEX];"
+        echo "[$INDEX:v]format=yuv420p,split[bg$INDEX][fg$INDEX]; [bg$INDEX]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred$INDEX]; [fg$INDEX]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled$INDEX]; [bg_blurred$INDEX][fg_scaled$INDEX]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080,setsar=1[v$INDEX];" >> "$FILTER_SCRIPT"
     else
-        FILTER_COMPLEX+="[$INDEX:v]format=yuv420p,split[bg][fg];"
-        FILTER_COMPLEX+="[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];"
-        FILTER_COMPLEX+="[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];"
-        FILTER_COMPLEX+="[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2[v$INDEX];"
+        echo "[$INDEX:v]format=yuv420p,split[bg$INDEX][fg$INDEX]; [bg$INDEX]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred$INDEX]; [fg$INDEX]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled$INDEX]; [bg_blurred$INDEX][fg_scaled$INDEX]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1[v$INDEX];" >> "$FILTER_SCRIPT"
     fi
     INDEX=$((INDEX + 1))
 done
 
 # Add Post-gap (Black frame)
 FFMPEG_INPUT_ARGS+=("-f" "lavfi" "-t" "0.3" "-i" "color=c=black:s=1920x1080:r=30")
-FILTER_COMPLEX+="[$INDEX:v]format=yuv420p[v$INDEX];"
+echo "[$INDEX:v]setsar=1,format=yuv420p[v$INDEX];" >> "$FILTER_SCRIPT"
 INDEX=$((INDEX + 1))
 
-# Add Tail (uses normalized temp tail)
+# Add Tail
 FFMPEG_INPUT_ARGS+=("-loop" "1" "-t" "2.0" "-i" "$TMP_TAIL")
-FILTER_COMPLEX+="[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,format=yuv420p[v$INDEX];"
+echo "[$INDEX:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p[v$INDEX];" >> "$FILTER_SCRIPT"
 INDEX=$((INDEX + 1))
 
-# Append the Concat block sequence instruction and explicitly force 30fps output
+# Concat Stream Assembly
 CONCAT_INPUTS=""
 for ((i=0; i<INDEX; i++)); do
     CONCAT_INPUTS+="[v$i]"
 done
-FILTER_COMPLEX+="${CONCAT_INPUTS}concat=n=${INDEX}:v=1:a=0,fps=30[video_out]"
+echo "${CONCAT_INPUTS}concat=n=${INDEX}:v=1:a=0,fps=30[video_out];" >> "$FILTER_SCRIPT"
+
+# 6. Audio Mapping appended to the script
+if [ "$AUDIO_FILE" != "/dev/null" ]; then
+    FFMPEG_INPUT_ARGS+=("-i" "$AUDIO_FILE")
+    AUDIO_INDEX=$INDEX
+    
+    if [ "$DYNAMIC_MODE" = false ] && [ "$SHORT_AUDIO_OVERRIDE" = false ]; then
+        fade_start=$(awk "BEGIN {print $expected_video_duration - 5.0}")
+        echo "[$AUDIO_INDEX:a]afade=t=out:st=${fade_start}:d=5.0[audio_out];" >> "$FILTER_SCRIPT"
+    fi
+fi
+
+echo "[video_out]format=nv12[final_video_out]" >> "$FILTER_SCRIPT"
+
 
 # 6. Define Audio Mapping Arguments safely using array mechanics
 AUDIO_OUT_MAP=("-map" "[final_video_out]")
@@ -234,8 +240,8 @@ FILTER_COMPLEX+=";[video_out]format=nv12[final_video_out]"
 
 # 7. Execute Intel QSV Hardware Encoder Command safely with Array Expansion
 echo "Encoding video using Intel Quick Sync..."
-ffmpeg -y -loglevel info -stats "${FFMPEG_INPUT_ARGS[@]}" \
-  -filter_complex "$FILTER_COMPLEX" \
+ffmpeg -loglevel info -stats "${FFMPEG_INPUT_ARGS[@]}" \
+  -filter_complex_script "$FILTER_SCRIPT" \
   "${AUDIO_OUT_MAP[@]}" \
   -t "$expected_video_duration" \
   -c:v hevc_qsv -preset fast "$OUTPUT_FILE"
