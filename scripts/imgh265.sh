@@ -16,7 +16,7 @@ TMP_HEADER_CLIP="${TMP_PREFIX}-header.avi"
 TMP_TAIL_CLIP="${TMP_PREFIX}-tail.avi"
 
 # Default flag values
-AUDIO_FILE=""
+AUDIO_FILE="/dev/null"
 HEADER_IMG=""
 TAIL_IMG=""
 OUTPUT_FILE=""
@@ -24,26 +24,29 @@ DYNAMIC_MODE=false
 CROP_MODE=false
 BEAT_MODE=false
 PRESERVE_CONFIG=false
+OVERWRITE_OUTPUT=""
 SENSITIVITY="0.3"
 FIXED_DURATION="0.7"
 
 usage() {
-    echo "Usage: $0 -h <header> -t <tail> -o <output.mp4> -a <audio_file> [-d] [-c] [-b] [-p] [-s sensitivity] <directory_or_file_list...>"
+    echo "Usage: $0 -o <output.mp4> [-h header] [-t tail] [-a audio_file] [-y] [-d] [-c] [-b] [-p] [-s sensitivity] <directory_or_file_list...>"
     echo "Options:"
-    echo "  -h : Path to header image"
-    echo "  -t : Path to tail image"
-    echo "  -o : Path to output video mp4"
-    echo "  -a : Path to audio file (or /dev/null)"
+    echo "  -o : Path to output video mp4 (Required)"
+    echo "  -h : Path to header image (Optional)"
+    echo "  -t : Path to tail image (Optional)"
+    echo "  -a : Path to audio file or /dev/null (Optional)"
+    echo "  -y : Overwrite output file without asking"
     echo "  -d : Enable dynamic timing mode"
     echo "  -c : Enable smart crop mode"
     echo "  -b : Enable beat timing mode"
-    echo "  -p : Preserve temp concat text config file (deletes temp images only)"
+    echo "  -p : Preserve temp concat text config file"
     echo "  -s : Beat detection sensitivity (default: 0.3)"
     exit 1
 }
 
-# Cleanup handler: Safely checks PID to ensure execution only on script exit
+# Cleanup handler: Handles exit and Ctrl+C interrupts cleanly
 cleanup() {
+    local exit_code=$?
     rm -rf "$TMP_SLIDES_DIR"
     rm -f "$TMP_BLACK_CLIP" "$TMP_HEADER_CLIP" "$TMP_TAIL_CLIP" "${TMP_PREFIX}"-heic-*.png
     if [ "$PRESERVE_CONFIG" = true ]; then
@@ -51,16 +54,18 @@ cleanup() {
     else
         rm -f "$INPUTS_TXT"
     fi
+    exit $exit_code
 }
 trap cleanup EXIT INT TERM
 
 # 1. Parse option flags using getopts
-while getopts ":h:t:o:a:dcbps:" opt; do
+while getopts ":h:t:o:a:ydcbps:" opt; do
     case ${opt} in
         h ) HEADER_IMG="$OPTARG" ;;
         t ) TAIL_IMG="$OPTARG" ;;
         o ) OUTPUT_FILE="$OPTARG" ;;
         a ) AUDIO_FILE="$OPTARG" ;;
+        y ) OVERWRITE_OUTPUT="-y" ;;
         d ) DYNAMIC_MODE=true ;;
         c ) CROP_MODE=true ;;
         b ) BEAT_MODE=true ;;
@@ -72,19 +77,31 @@ while getopts ":h:t:o:a:dcbps:" opt; do
 done
 shift $((OPTIND -1))
 
-# Validate required flags
-if [ -z "$HEADER_IMG" ] || [ -z "$TAIL_IMG" ] || [ -z "$OUTPUT_FILE" ] || [ -z "$AUDIO_FILE" ] || [ "$#" -lt 1 ]; then
-    echo "Error: Missing required parameters." >&2
+# Validate required parameters
+if [ -z "$OUTPUT_FILE" ] || [ "$#" -lt 1 ]; then
+    echo "Error: Missing output file (-o) or source image input list." >&2
     usage
 fi
 
-if [ ! -f "$HEADER_IMG" ] || [ ! -f "$TAIL_IMG" ] || { [ "$AUDIO_FILE" != "/dev/null" ] && [ ! -f "$AUDIO_FILE" ]; }; then
-    echo "Error: Required input header, tail, or audio files missing." >&2
+# Validate input files if explicitly provided
+if [ -n "$HEADER_IMG" ] && [ ! -f "$HEADER_IMG" ]; then
+    echo "Error: Specified header image does not exist: $HEADER_IMG" >&2
+    exit 1
+fi
+if [ -n "$TAIL_IMG" ] && [ ! -f "$TAIL_IMG" ]; then
+    echo "Error: Specified tail image does not exist: $TAIL_IMG" >&2
+    exit 1
+fi
+if [ "$AUDIO_FILE" != "/dev/null" ] && [ ! -f "$AUDIO_FILE" ]; then
+    echo "Error: Specified audio file does not exist: $AUDIO_FILE" >&2
     exit 1
 fi
 
-HEADER_ABS=$(realpath "$HEADER_IMG")
-TAIL_ABS=$(realpath "$TAIL_IMG")
+HEADER_ABS=""
+[ -n "$HEADER_IMG" ] && HEADER_ABS=$(realpath "$HEADER_IMG")
+
+TAIL_ABS=""
+[ -n "$TAIL_IMG" ] && TAIL_ABS=$(realpath "$TAIL_IMG")
 
 # Resolve input images (supports jpg, jpeg, png, webp, gif, heic)
 IMAGE_LIST=()
@@ -109,11 +126,19 @@ NUM_IMAGES=${#FINAL_IMAGES[@]}
 [ "$NUM_IMAGES" -eq 0 ] && { echo "Error: No valid source images found." >&2; exit 1; }
 
 # 2. Handle Audio Duration & Dependency Verification
-FIXED_OVERHEAD="4.6"
 AUDIO_LEN=0
 if [ "$AUDIO_FILE" != "/dev/null" ]; then
     AUDIO_LEN=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$AUDIO_FILE")
 fi
+
+# Determine active overhead timing dynamically
+HEADER_OVERHEAD="0.0"
+TAIL_OVERHEAD="0.0"
+
+[ -n "$HEADER_ABS" ] && HEADER_OVERHEAD="2.3" # 2.0s card + 0.3s black spacer
+[ -n "$TAIL_ABS" ]   && TAIL_OVERHEAD="2.3"   # 0.3s black spacer + 2.0s card
+
+FIXED_OVERHEAD=$(awk "BEGIN {printf \"%.4f\", $HEADER_OVERHEAD + $TAIL_OVERHEAD}")
 
 # 3. Calculate Slide Durations Array
 DURATIONS=()
@@ -130,7 +155,7 @@ if [ "$BEAT_MODE" = true ]; then
         for b in "${RAW_BEATS[@]}"; do
             if (( $(awk "BEGIN {print ($b > 0.01) ? 1 : 0}") )); then BEATS+=("$b"); fi
         done
-        
+
         echo "Detected ${#BEATS[@]} total valid musical beat intervals."
         B_IDX=0
         for ((i=0; i<NUM_IMAGES; i++)); do
@@ -144,18 +169,18 @@ if [ "$BEAT_MODE" = true ]; then
                 DURATIONS+=("$FIXED_DURATION")
             fi
         done
+    else
+        for ((i=0; i<NUM_IMAGES; i++)); do DURATIONS+=("$FIXED_DURATION"); done
     fi
 else
     slide_duration="$FIXED_DURATION"
     if [ "$DYNAMIC_MODE" = true ] && [ "$AUDIO_FILE" != "/dev/null" ]; then
-        # Ensure minimum per-slide duration floor of 0.25s
         slide_duration=$(awk "BEGIN {val = ($AUDIO_LEN - $FIXED_OVERHEAD) / $NUM_IMAGES; print (val < 0.25) ? 0.25 : val}")
         echo "Dynamic Mode Active: Per-slide duration set to ${slide_duration}s across $NUM_IMAGES images."
     fi
     for ((i=0; i<NUM_IMAGES; i++)); do DURATIONS+=("$slide_duration"); done
 fi
 
-# Compute overall video timeline duration accurately (2.0s header + 0.3s black + slides + 0.3s black + 2.0s tail)
 expected_video_duration="$FIXED_OVERHEAD"
 for dur in "${DURATIONS[@]}"; do
     expected_video_duration=$(awk "BEGIN {print $expected_video_duration + $dur}")
@@ -179,16 +204,20 @@ echo "Preprocessing $NUM_IMAGES images into intermediate slide clips..."
 
 STD_FILTER="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black,setsar=1,format=yuv420p"
 
-# Pre-render standard header, tail, and black spacer cards
-ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP" || {
-    echo "Error: Failed to render header card." >&2; exit 1;
-}
-ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS"   -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP" || {
-    echo "Error: Failed to render tail card." >&2; exit 1;
-}
-ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP" || {
-    echo "Error: Failed to render black spacer clip." >&2; exit 1;
-}
+# Render black spacer clip only if needed
+if [ -n "$HEADER_ABS" ] || [ -n "$TAIL_ABS" ]; then
+    ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP" || exit 1
+fi
+
+# Render header clip if provided
+if [ -n "$HEADER_ABS" ]; then
+    ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP" || exit 1
+fi
+
+# Render tail clip if provided
+if [ -n "$TAIL_ABS" ]; then
+    ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP" || exit 1
+fi
 
 VALID_CLIPS=()
 FAILED_COUNT=0
@@ -202,7 +231,7 @@ for i in "${!FINAL_IMAGES[@]}"; do
 
     ext="${img##*.}"
     ext_lc=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
-    
+
     src_img="$img"
     if [[ "$ext_lc" == "heic" || "$ext_lc" == "heif" ]]; then
         tmp_heic_png="${TMP_PREFIX}-heic-${i}.png"
@@ -219,10 +248,8 @@ for i in "${!FINAL_IMAGES[@]}"; do
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
     fi
 
-    # Render intermediate clip
     ffmpeg -y -loglevel error -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
 
-    # Verify clip integrity and non-zero file size
     if [ -s "$clip_out" ]; then
         VALID_CLIPS+=("$clip_out")
         TOTAL_SLIDE_DURATION=$(awk "BEGIN {printf \"%.6f\", $TOTAL_SLIDE_DURATION + $dur}")
@@ -233,7 +260,6 @@ for i in "${!FINAL_IMAGES[@]}"; do
     fi
 done
 
-# Recalculate accurate timeline duration using ONLY valid rendered clips
 expected_video_duration=$(awk "BEGIN {printf \"%.6f\", $FIXED_OVERHEAD + $TOTAL_SLIDE_DURATION}")
 
 echo "Intermediate Preprocessing Summary:"
@@ -245,15 +271,20 @@ echo "  - Adjusted Video Duration: ${expected_video_duration}s"
 
 # Build Concat Manifest File
 > "$INPUTS_TXT"
-echo "file '$TMP_HEADER_CLIP'" >> "$INPUTS_TXT"
-echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
+
+if [ -n "$HEADER_ABS" ]; then
+    echo "file '$TMP_HEADER_CLIP'" >> "$INPUTS_TXT"
+    echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
+fi
 
 for clip in "${VALID_CLIPS[@]}"; do
     echo "file '$clip'" >> "$INPUTS_TXT"
 done
 
-echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
-echo "file '$TMP_TAIL_CLIP'" >> "$INPUTS_TXT"
+if [ -n "$TAIL_ABS" ]; then
+    echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
+    echo "file '$TMP_TAIL_CLIP'" >> "$INPUTS_TXT"
+fi
 
 # 6. Configure Audio Input
 FFMPEG_AUDIO_ARGS=()
@@ -275,7 +306,7 @@ fi
 
 # 7. Final Hardware Accelerated Encoding Pass
 echo "Encoding master slideshow using Intel Quick Sync..."
-ffmpeg -loglevel info -stats \
+ffmpeg $OVERWRITE_OUTPUT -loglevel info -stats \
   -f concat -safe 0 -auto_convert 1 -i "$INPUTS_TXT" \
   "${FFMPEG_AUDIO_ARGS[@]}" \
   -filter_complex "$AUDIO_FILTER" \
@@ -290,5 +321,5 @@ if [ $FFMPEG_EXIT_CODE -eq 0 ]; then
     echo "Process complete! File output successfully located at: $OUTPUT_FILE"
 else
     echo "Error: Video compilation failed inside FFmpeg." >&2
-    exit 1
+    exit $FFMPEG_EXIT_CODE
 fi
