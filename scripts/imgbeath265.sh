@@ -1,6 +1,21 @@
 #!/bin/bash
 
-# Default values
+# Ensure script-level traps don't trigger inside child processes
+set -E
+
+# Define script name and base directory for temporary files safely
+SCRIPT_NAME=$(basename "$0")
+TMP_DIR="${TMPDIR:-/tmp}"
+TMP_PREFIX="${TMP_DIR}/.${SCRIPT_NAME}-$$"
+TMP_SLIDES_DIR="${TMP_PREFIX}-slides"
+
+# Set up paths for temp files
+INPUTS_TXT="${TMP_PREFIX}-inputs.txt"
+TMP_BLACK_CLIP="${TMP_PREFIX}-black.avi"
+TMP_HEADER_CLIP="${TMP_PREFIX}-header.avi"
+TMP_TAIL_CLIP="${TMP_PREFIX}-tail.avi"
+
+# Default flag values
 AUDIO_FILE=""
 HEADER_IMG=""
 TAIL_IMG=""
@@ -27,6 +42,18 @@ usage() {
     exit 1
 }
 
+# Cleanup handler: Safely checks PID to ensure execution only on script exit
+cleanup() {
+    rm -rf "$TMP_SLIDES_DIR"
+    rm -f "$TMP_BLACK_CLIP" "$TMP_HEADER_CLIP" "$TMP_TAIL_CLIP" "${TMP_PREFIX}"-heic-*.png
+    if [ "$PRESERVE_CONFIG" = true ]; then
+        echo "Preserved concat config file at: $INPUTS_TXT"
+    else
+        rm -f "$INPUTS_TXT"
+    fi
+}
+trap cleanup EXIT INT TERM
+
 # 1. Parse option flags using getopts
 while getopts ":h:t:o:a:dcbps:" opt; do
     case ${opt} in
@@ -39,29 +66,32 @@ while getopts ":h:t:o:a:dcbps:" opt; do
         b ) BEAT_MODE=true ;;
         p ) PRESERVE_CONFIG=true ;;
         s ) SENSITIVITY="$OPTARG" ;;
-        \? ) usage ;;
+        \? ) echo "Error: Invalid option -$OPTARG" >&2; usage ;;
+        : ) echo "Error: Option -$OPTARG requires an argument." >&2; usage ;;
     esac
 done
 shift $((OPTIND -1))
 
+# Validate required flags
 if [ -z "$HEADER_IMG" ] || [ -z "$TAIL_IMG" ] || [ -z "$OUTPUT_FILE" ] || [ -z "$AUDIO_FILE" ] || [ "$#" -lt 1 ]; then
+    echo "Error: Missing required parameters." >&2
     usage
 fi
 
 if [ ! -f "$HEADER_IMG" ] || [ ! -f "$TAIL_IMG" ] || { [ "$AUDIO_FILE" != "/dev/null" ] && [ ! -f "$AUDIO_FILE" ]; }; then
-    echo "Error: Required input files missing." >&2
+    echo "Error: Required input header, tail, or audio files missing." >&2
     exit 1
 fi
 
 HEADER_ABS=$(realpath "$HEADER_IMG")
 TAIL_ABS=$(realpath "$TAIL_IMG")
 
-# Resolve input images
+# Resolve input images (supports jpg, jpeg, png, webp, gif, heic)
 IMAGE_LIST=()
 if [ -d "$1" ] && [ "$#" -eq 1 ]; then
-    shopt -s nullglob
-    for f in "$1"/*.jpg "$1"/*.JPG; do IMAGE_LIST+=("$f"); done
-    shopt -u nullglob
+    shopt -s nullglob nocaseglob
+    for f in "$1"/*.{jpg,jpeg,png,webp,gif,heic,heif}; do IMAGE_LIST+=("$f"); done
+    shopt -u nullglob nocaseglob
 else
     for f in "$@"; do IMAGE_LIST+=("$f"); done
 fi
@@ -76,30 +106,9 @@ for img in "${IMAGE_LIST[@]}"; do
 done
 
 NUM_IMAGES=${#FINAL_IMAGES[@]}
-[ "$NUM_IMAGES" -eq 0 ] && { echo "Error: No source images found." >&2; exit 1; }
+[ "$NUM_IMAGES" -eq 0 ] && { echo "Error: No valid source images found." >&2; exit 1; }
 
-# Define script name and base directory for temporary files safely
-SCRIPT_NAME=$(basename "$0")
-TMP_DIR="${TMPDIR:-/tmp}"
-TMP_PREFIX="${TMP_DIR}/.${SCRIPT_NAME}-$$"
-
-INPUTS_TXT="${TMP_PREFIX}-inputs.txt"
-TMP_BLACK="${TMP_PREFIX}-black.jpg"
-TMP_HEADER="${TMP_PREFIX}-header.jpg"
-TMP_TAIL="${TMP_PREFIX}-tail.jpg"
-
-# Cleanup function: deletes generated temp images always, preserves text config if -p is set
-cleanup() {
-    rm -f "$TMP_BLACK" "$TMP_HEADER" "$TMP_TAIL"
-    if [ "$PRESERVE_CONFIG" = true ]; then
-        echo "Preserved concat config file at: $INPUTS_TXT"
-    else
-        rm -f "$INPUTS_TXT"
-    fi
-}
-trap cleanup EXIT
-
-# 2. Handle Audio Duration
+# 2. Handle Audio Duration & Dependency Verification
 FIXED_OVERHEAD="4.6"
 AUDIO_LEN=0
 if [ "$AUDIO_FILE" != "/dev/null" ]; then
@@ -108,27 +117,34 @@ fi
 
 # 3. Calculate Slide Durations Array
 DURATIONS=()
-if [ "$BEAT_MODE" = true ] && [ "$AUDIO_FILE" != "/dev/null" ] && command -v aubiocut &> /dev/null; then
-    echo "Analyzing audio rhythms with aubio (Sensitivity: $SENSITIVITY)..."
-    RAW_BEATS=($(aubiocut -i "$AUDIO_FILE" -b -t "$SENSITIVITY"))
-    BEATS=()
-    for b in "${RAW_BEATS[@]}"; do
-        if (( $(awk "BEGIN {print ($b > 0.01) ? 1 : 0}") )); then BEATS+=("$b"); fi
-    done
-    
-    echo "Detected ${#BEATS[@]} total valid musical beat intervals."
-    B_IDX=0
-    for ((i=0; i<NUM_IMAGES; i++)); do
-        NEXT_IDX=$((B_IDX + 1))
-        if [ $NEXT_IDX -lt ${#BEATS[@]} ]; then
-            INTERVAL=$(awk "BEGIN {printf \"%.4f\", ${BEATS[$NEXT_IDX]} - ${BEATS[$B_IDX]}}")
-            INTERVAL=$(awk "BEGIN {val=$INTERVAL; if(val<0.25) val=0.25; if(val>3.0) val=0.70; print val}")
-            DURATIONS+=("$INTERVAL")
-            B_IDX=$NEXT_IDX
-        else
-            DURATIONS+=("$FIXED_DURATION")
-        fi
-    done
+if [ "$BEAT_MODE" = true ]; then
+    if ! command -v aubiocut &>/dev/null; then
+        echo "Error: Beat mode (-b) requires 'aubiocut', but it is not installed or in PATH." >&2
+        exit 1
+    fi
+
+    if [ "$AUDIO_FILE" != "/dev/null" ]; then
+        echo "Analyzing audio rhythms with aubio (Sensitivity: $SENSITIVITY)..."
+        RAW_BEATS=($(aubiocut -i "$AUDIO_FILE" -b -t "$SENSITIVITY"))
+        BEATS=()
+        for b in "${RAW_BEATS[@]}"; do
+            if (( $(awk "BEGIN {print ($b > 0.01) ? 1 : 0}") )); then BEATS+=("$b"); fi
+        done
+        
+        echo "Detected ${#BEATS[@]} total valid musical beat intervals."
+        B_IDX=0
+        for ((i=0; i<NUM_IMAGES; i++)); do
+            NEXT_IDX=$((B_IDX + 1))
+            if [ $NEXT_IDX -lt ${#BEATS[@]} ]; then
+                INTERVAL=$(awk "BEGIN {printf \"%.4f\", ${BEATS[$NEXT_IDX]} - ${BEATS[$B_IDX]}}")
+                INTERVAL=$(awk "BEGIN {val=$INTERVAL; if(val<0.25) val=0.25; if(val>3.0) val=0.70; print val}")
+                DURATIONS+=("$INTERVAL")
+                B_IDX=$NEXT_IDX
+            else
+                DURATIONS+=("$FIXED_DURATION")
+            fi
+        done
+    fi
 else
     slide_duration="$FIXED_DURATION"
     if [ "$DYNAMIC_MODE" = true ] && [ "$AUDIO_FILE" != "/dev/null" ]; then
@@ -137,7 +153,7 @@ else
     for ((i=0; i<NUM_IMAGES; i++)); do DURATIONS+=("$slide_duration"); done
 fi
 
-# Compute overall video play length cleanly
+# Compute overall timeline duration
 expected_video_duration="2.3"
 for dur in "${DURATIONS[@]}"; do
     expected_video_duration=$(awk "BEGIN {print $expected_video_duration + $dur}")
@@ -145,73 +161,98 @@ done
 expected_video_duration=$(awk "BEGIN {print $expected_video_duration + 2.3}")
 echo "Calculated total timeline duration: ${expected_video_duration}s"
 
-# 4. Smart Short Audio Check and Warning System
-SHORT_AUDIO_OVERRIDE=false
+# 4. Short Audio Warning System
 if [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ] && [ "$BEAT_MODE" = false ]; then
     is_audio_shorter=$(awk "BEGIN {print ($AUDIO_LEN < $expected_video_duration) ? 1 : 0}")
     if [ "$is_audio_shorter" -eq 1 ]; then
         echo "************************************************************************"
-        echo "WARNING: Provided audio file (${AUDIO_LEN}s) is SHORTER than the"
-        echo "         calculated photo slideshow timeline (${expected_video_duration}s)."
-        echo "         -> Bypassing abrupt truncation. Video will play to completion."
+        echo "WARNING: Audio file (${AUDIO_LEN}s) is SHORTER than timeline (${expected_video_duration}s)."
+        echo "         -> Video will play to completion with trailing silence."
         echo "************************************************************************"
-        SHORT_AUDIO_OVERRIDE=true
     fi
 fi
 
-# 5. Build Input Playlist Timeline Track using the fast Concat format
-echo "Assembling timeline layout structure..."
+# 5. Preprocess Slides into Lightweight AVI Intermediate Clips
+mkdir -p "$TMP_SLIDES_DIR"
+echo "Preprocessing $NUM_IMAGES images into intermediate slide clips..."
 
-# Standardize Header, Tail, and Black images to exact 1920x1080 dimensions
-ffmpeg -y -i "$HEADER_ABS" -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black" -pix_fmt yuv420p -vframes 1 "$TMP_HEADER" 2>/dev/null
-ffmpeg -y -i "$TAIL_ABS"   -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black" -pix_fmt yuv420p -vframes 1 "$TMP_TAIL" 2>/dev/null
-ffmpeg -y -f lavfi -i color=c=black:s=1920x1080 -pix_fmt yuv420p -vframes 1 "$TMP_BLACK" 2>/dev/null
+STD_FILTER="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black,setsar=1,format=yuv420p"
 
-# Assemble Concat file using normalized header and tail
-echo -e "file '$TMP_HEADER'\nduration 2.0\nfile '$TMP_BLACK'\nduration 0.3" > "$INPUTS_TXT"
+# Pre-render header, tail, and black spacer cards
+ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP"
+ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS"   -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP"
+ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP"
+
+# Render slides sequentially
 for i in "${!FINAL_IMAGES[@]}"; do
-    echo -e "file '${FINAL_IMAGES[$i]}'\nduration ${DURATIONS[$i]}" >> "$INPUTS_TXT"
-done
-echo -e "file '$TMP_BLACK'\nduration 0.3\nfile '$TMP_TAIL'\nduration 2.0\nfile '$TMP_TAIL'" >> "$INPUTS_TXT"
+    img="${FINAL_IMAGES[$i]}"
+    clip_out=$(printf "%s/clip_%04d.avi" "$TMP_SLIDES_DIR" "$i")
+    dur="${DURATIONS[$i]}"
 
-# 6. Configure Filters & Audio Maps Safely
+    ext="${img##*.}"
+    ext_lc=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+    
+    src_img="$img"
+    if [[ "$ext_lc" == "heic" || "$ext_lc" == "heif" ]]; then
+        tmp_heic_png="${TMP_PREFIX}-heic-${i}.png"
+        if command -v heif-convert &>/dev/null; then
+            heif-convert "$img" "$tmp_heic_png" &>/dev/null && src_img="$tmp_heic_png"
+        elif command -v magick &>/dev/null; then
+            magick "$img" "$tmp_heic_png" &>/dev/null && src_img="$tmp_heic_png"
+        fi
+    fi
+
+    if [ "$CROP_MODE" = true ]; then
+        FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080,setsar=1"
+    else
+        FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
+    fi
+
+    ffmpeg -y -loglevel error -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out" || {
+        echo "Warning: Failed to process slide $i. Skipping..." >&2
+        continue
+    }
+done
+
+# Assemble Concat Manifest
+> "$INPUTS_TXT"
+echo "file '$TMP_HEADER_CLIP'" >> "$INPUTS_TXT"
+echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
+
+for i in "${!FINAL_IMAGES[@]}"; do
+    clip_out=$(printf "%s/clip_%04d.avi" "$TMP_SLIDES_DIR" "$i")
+    [ -f "$clip_out" ] && echo "file '$clip_out'" >> "$INPUTS_TXT"
+done
+
+echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
+echo "file '$TMP_TAIL_CLIP'" >> "$INPUTS_TXT"
+
+# 6. Configure Audio Input
 FFMPEG_AUDIO_ARGS=()
 AUDIO_FILTER=""
-MAP_ARGS=("-map" "[final_video_out]")
 
 if [ "$AUDIO_FILE" = "/dev/null" ]; then
     FFMPEG_AUDIO_ARGS+=("-f" "lavfi" "-i" "anullsrc=channel_layout=stereo:sample_rate=44100")
-    AUDIO_FILTER=";[1:a]amix=inputs=1[audio_out]"
-    MAP_ARGS+=("-map" "[audio_out]")
+    AUDIO_FILTER="[1:a]amix=inputs=1[audio_out]"
 else
     FFMPEG_AUDIO_ARGS+=("-i" "$AUDIO_FILE" "-f" "lavfi" "-i" "anullsrc=channel_layout=stereo:sample_rate=44100")
-    MAP_ARGS+=("-map" "[audio_out]")
-    
     if [ "$DYNAMIC_MODE" = true ]; then
-        AUDIO_FILTER=";[2:a][1:a]amix=inputs=2:duration=first[audio_out]"
+        AUDIO_FILTER="[2:a][1:a]amix=inputs=2:duration=first[audio_out]"
     else
         FADE_DURATION="4.0"
         fade_start=$(awk "BEGIN {val = $expected_video_duration - $FADE_DURATION; print (val > 0) ? val : 0}")
-        echo "Audio tracking: Applying ${FADE_DURATION}s fade-out starting at ${fade_start}s (ends at ${expected_video_duration}s)."
-        AUDIO_FILTER=";[1:a]afade=t=out:st=${fade_start}:d=${FADE_DURATION},atrim=0:${expected_video_duration}[audio_fade];[2:a][audio_fade]amix=inputs=2:duration=first[audio_out]"
+        AUDIO_FILTER="[1:a]afade=t=out:st=${fade_start}:d=${FADE_DURATION},atrim=0:${expected_video_duration}[audio_fade];[2:a][audio_fade]amix=inputs=2:duration=first[audio_out]"
     fi
 fi
 
-if [ "$CROP_MODE" = true ]; then
-    echo "Layout style: Smart Crop (Landscape fills screen, Portrait uses blurred edges)."
-    VIDEO_FILTER="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080,fps=30,format=nv12[final_video_out]"
-else
-    echo "Layout style: Blurred Background Padding for all images."
-    VIDEO_FILTER="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,fps=30,format=nv12[final_video_out]"
-fi
-
-# Append NV12 hardware layout standard inside the global filter string
-FILTER_COMPLEX="${VIDEO_FILTER}${AUDIO_FILTER}"
-
-# 7. Execute Hardware Accelerated Render Track
-echo "Encoding video using Intel Quick Sync..."
-ffmpeg -loglevel info -stats -f concat -safe 0 -i "$INPUTS_TXT" "${FFMPEG_AUDIO_ARGS[@]}" \
-  -filter_complex "$FILTER_COMPLEX" "${MAP_ARGS[@]}" \
+# 7. Final Hardware Accelerated Encoding Pass
+echo "Encoding master slideshow using Intel Quick Sync..."
+ffmpeg -loglevel info -stats \
+  -f concat -safe 0 -auto_convert 1 -i "$INPUTS_TXT" \
+  "${FFMPEG_AUDIO_ARGS[@]}" \
+  -filter_complex "$AUDIO_FILTER" \
+  -map "0:v" -map "[audio_out]" \
+  -vf "format=nv12" \
   -fps_mode cfr -t "$expected_video_duration" \
   -c:v hevc_qsv -preset slow -global_quality 20 "$OUTPUT_FILE"
 
@@ -220,6 +261,6 @@ FFMPEG_EXIT_CODE=$?
 if [ $FFMPEG_EXIT_CODE -eq 0 ]; then
     echo "Process complete! File output successfully located at: $OUTPUT_FILE"
 else
-    echo "Error: Video compilation failed inside FFmpeg during processing loop." >&2
+    echo "Error: Video compilation failed inside FFmpeg." >&2
     exit $FFMPEG_EXIT_CODE
 fi
