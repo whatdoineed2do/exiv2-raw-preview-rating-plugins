@@ -11,10 +11,9 @@ TMP_SLIDES_DIR="${TMP_PREFIX}-slides"
 
 # Set up paths for temp files
 INPUTS_TXT="${TMP_PREFIX}-inputs.txt"
-TMP_BLACK="${TMP_PREFIX}-black.jpg"
-TMP_HEADER="${TMP_PREFIX}-header.jpg"
-TMP_TAIL="${TMP_PREFIX}-tail.jpg"
-FILTER_SCRIPT="${TMP_PREFIX}-filter.ffscript"
+TMP_BLACK_CLIP="${TMP_PREFIX}-black.avi"
+TMP_HEADER_CLIP="${TMP_PREFIX}-header.avi"
+TMP_TAIL_CLIP="${TMP_PREFIX}-tail.avi"
 
 # Default flag values
 AUDIO_FILE=""
@@ -46,7 +45,7 @@ usage() {
 # Cleanup handler: Safely checks PID to ensure execution only on script exit
 cleanup() {
     rm -rf "$TMP_SLIDES_DIR"
-    rm -f "$TMP_BLACK" "$TMP_HEADER" "$TMP_TAIL" "$FILTER_SCRIPT" "${TMP_PREFIX}"-heic-*.png
+    rm -f "$TMP_BLACK_CLIP" "$TMP_HEADER_CLIP" "$TMP_TAIL_CLIP" "${TMP_PREFIX}"-heic-*.png
     if [ "$PRESERVE_CONFIG" = true ]; then
         echo "Preserved concat config file at: $INPUTS_TXT"
     else
@@ -149,17 +148,18 @@ if [ "$BEAT_MODE" = true ]; then
 else
     slide_duration="$FIXED_DURATION"
     if [ "$DYNAMIC_MODE" = true ] && [ "$AUDIO_FILE" != "/dev/null" ]; then
-        slide_duration=$(awk "BEGIN {printf \"%.4f\", ($AUDIO_LEN - $FIXED_OVERHEAD) / $NUM_IMAGES}")
+        # Ensure minimum per-slide duration floor of 0.25s
+        slide_duration=$(awk "BEGIN {val = ($AUDIO_LEN - $FIXED_OVERHEAD) / $NUM_IMAGES; print (val < 0.25) ? 0.25 : val}")
+        echo "Dynamic Mode Active: Per-slide duration set to ${slide_duration}s across $NUM_IMAGES images."
     fi
     for ((i=0; i<NUM_IMAGES; i++)); do DURATIONS+=("$slide_duration"); done
 fi
 
-# Compute overall timeline duration
-expected_video_duration="2.3"
+# Compute overall video timeline duration accurately (2.0s header + 0.3s black + slides + 0.3s black + 2.0s tail)
+expected_video_duration="$FIXED_OVERHEAD"
 for dur in "${DURATIONS[@]}"; do
     expected_video_duration=$(awk "BEGIN {print $expected_video_duration + $dur}")
 done
-expected_video_duration=$(awk "BEGIN {print $expected_video_duration + 2.3}")
 echo "Calculated total timeline duration: ${expected_video_duration}s"
 
 # 4. Short Audio Warning System
@@ -173,21 +173,26 @@ if [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ] && [ "$BEAT_M
     fi
 fi
 
-# 5. Preprocess Slides into Lightweight AVI Intermediate Clips (Strict Stream Alignment)
+# 5. Preprocess Slides into Lightweight AVI Intermediate Clips
 mkdir -p "$TMP_SLIDES_DIR"
 echo "Preprocessing $NUM_IMAGES images into intermediate slide clips..."
 
-TMP_HEADER_CLIP="${TMP_PREFIX}-header.avi"
-TMP_TAIL_CLIP="${TMP_PREFIX}-tail.avi"
-TMP_BLACK_CLIP="${TMP_PREFIX}-black.avi"
-
-# Standard scale filter ensuring exact 1920x1080 bounds & yuv420p pixel format
 STD_FILTER="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(1920-iw)/2:(1080-ih)/2:black,setsar=1,format=yuv420p"
 
-# Pre-render standard cards
-ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP"
-ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS"   -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP"
-ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP"
+# Pre-render standard header, tail, and black spacer cards
+ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP" || {
+    echo "Error: Failed to render header card." >&2; exit 1;
+}
+ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS"   -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP" || {
+    echo "Error: Failed to render tail card." >&2; exit 1;
+}
+ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP" || {
+    echo "Error: Failed to render black spacer clip." >&2; exit 1;
+}
+
+VALID_CLIPS=()
+FAILED_COUNT=0
+TOTAL_SLIDE_DURATION=0
 
 # Render each slide sequentially
 for i in "${!FINAL_IMAGES[@]}"; do
@@ -195,26 +200,56 @@ for i in "${!FINAL_IMAGES[@]}"; do
     clip_out=$(printf "%s/clip_%04d.avi" "$TMP_SLIDES_DIR" "$i")
     dur="${DURATIONS[$i]}"
 
+    ext="${img##*.}"
+    ext_lc=$(echo "$ext" | tr '[:upper:]' '[:lower:]')
+    
+    src_img="$img"
+    if [[ "$ext_lc" == "heic" || "$ext_lc" == "heif" ]]; then
+        tmp_heic_png="${TMP_PREFIX}-heic-${i}.png"
+        if command -v heif-convert &>/dev/null; then
+            heif-convert "$img" "$tmp_heic_png" &>/dev/null && src_img="$tmp_heic_png"
+        elif command -v magick &>/dev/null; then
+            magick "$img" "$tmp_heic_png" &>/dev/null && src_img="$tmp_heic_png"
+        fi
+    fi
+
     if [ "$CROP_MODE" = true ]; then
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080,setsar=1"
     else
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
     fi
 
-    ffmpeg -y -loglevel error -loop 1 -i "$img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out" || {
-        echo "Warning: Failed to process slide $i. Skipping..." >&2
-        continue
-    }
+    # Render intermediate clip
+    ffmpeg -y -loglevel error -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
+
+    # Verify clip integrity and non-zero file size
+    if [ -s "$clip_out" ]; then
+        VALID_CLIPS+=("$clip_out")
+        TOTAL_SLIDE_DURATION=$(awk "BEGIN {printf \"%.6f\", $TOTAL_SLIDE_DURATION + $dur}")
+    else
+        echo "Warning: Skipped corrupt or unreadable image ($i): $(basename "$img")" >&2
+        rm -f "$clip_out" 2>/dev/null
+        ((FAILED_COUNT++))
+    fi
 done
+
+# Recalculate accurate timeline duration using ONLY valid rendered clips
+expected_video_duration=$(awk "BEGIN {printf \"%.6f\", $FIXED_OVERHEAD + $TOTAL_SLIDE_DURATION}")
+
+echo "Intermediate Preprocessing Summary:"
+echo "  - Total Valid Slides Rendered: ${#VALID_CLIPS[@]}"
+echo "  - Failed/Skipped Images: ${FAILED_COUNT}"
+echo "  - Adjusted Video Duration: ${expected_video_duration}s"
+
+[ "${#VALID_CLIPS[@]}" -eq 0 ] && { echo "Error: Zero slides rendered successfully." >&2; exit 1; }
 
 # Build Concat Manifest File
 > "$INPUTS_TXT"
 echo "file '$TMP_HEADER_CLIP'" >> "$INPUTS_TXT"
 echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
 
-for i in "${!FINAL_IMAGES[@]}"; do
-    clip_out=$(printf "%s/clip_%04d.avi" "$TMP_SLIDES_DIR" "$i")
-    [ -f "$clip_out" ] && echo "file '$clip_out'" >> "$INPUTS_TXT"
+for clip in "${VALID_CLIPS[@]}"; do
+    echo "file '$clip'" >> "$INPUTS_TXT"
 done
 
 echo "file '$TMP_BLACK_CLIP'" >> "$INPUTS_TXT"
@@ -230,7 +265,7 @@ if [ "$AUDIO_FILE" = "/dev/null" ]; then
 else
     FFMPEG_AUDIO_ARGS+=("-i" "$AUDIO_FILE" "-f" "lavfi" "-i" "anullsrc=channel_layout=stereo:sample_rate=44100")
     if [ "$DYNAMIC_MODE" = true ]; then
-        AUDIO_FILTER="[2:a][1:a]amix=inputs=2:duration=first[audio_out]"
+        AUDIO_FILTER="[1:a][2:a]amix=inputs=2:duration=longest[audio_out]"
     else
         FADE_DURATION="4.0"
         fade_start=$(awk "BEGIN {val = $expected_video_duration - $FADE_DURATION; print (val > 0) ? val : 0}")
