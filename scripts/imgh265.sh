@@ -20,6 +20,7 @@ AUDIO_FILE="/dev/null"
 HEADER_IMG=""
 TAIL_IMG=""
 OUTPUT_FILE=""
+TARGET_DURATION_RAW=""
 DYNAMIC_MODE=false
 CROP_MODE=false
 BEAT_MODE=false
@@ -29,9 +30,10 @@ SENSITIVITY="0.3"
 FIXED_DURATION="0.7"
 
 usage() {
-    echo "Usage: $0 -o <output.mp4> [-h header] [-t tail] [-a audio_file] [-y] [-d] [-c] [-b] [-p] [-s sensitivity] <directory_or_file_list...>"
+    echo "Usage: $0 -o <output.mp4> [-L length] [-h header] [-t tail] [-a audio_file] [-y] [-d] [-c] [-b] [-p] [-s sensitivity] <directory_or_file_list...>"
     echo "Options:"
     echo "  -o : Path to output video mp4 (Required)"
+    echo "  -L : Target total length in HH:MM:SS:ms (or HH:MM:SS.ms / seconds)"
     echo "  -h : Path to header image (Optional)"
     echo "  -t : Path to tail image (Optional)"
     echo "  -a : Path to audio file or /dev/null (Optional)"
@@ -42,6 +44,32 @@ usage() {
     echo "  -p : Preserve temp concat text config file"
     echo "  -s : Beat detection sensitivity (default: 0.3)"
     exit 1
+}
+
+# Helper to convert HH:MM:SS:sss or HH:MM:SS.sss into floating-point total seconds
+parse_time_to_seconds() {
+    local raw_time="$1"
+    awk -v t="$raw_time" 'BEGIN {
+        # Normalize colons or dots used as millisecond separators
+        gsub(/\./, ":", t);
+        n = split(t, parts, ":");
+        if (n == 1) {
+            sec = parts[1] + 0.0;
+        } else if (n == 2) {
+            sec = (parts[1] * 60) + parts[2];
+        } else if (n == 3) {
+            sec = (parts[1] * 3600) + (parts[2] * 60) + parts[3];
+        } else if (n == 4) {
+            # HH : MM : SS : MS
+            ms = parts[4];
+            while (length(ms) < 3) ms = ms "0";
+            ms_val = ("0." ms) + 0.0;
+            sec = (parts[1] * 3600) + (parts[2] * 60) + parts[3] + ms_val;
+        } else {
+            sec = -1;
+        }
+        printf "%.4f", sec;
+    }'
 }
 
 # Cleanup handler: Handles exit and Ctrl+C interrupts cleanly
@@ -59,12 +87,13 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # 1. Parse option flags using getopts
-while getopts ":h:t:o:a:ydcbps:" opt; do
+while getopts ":h:t:o:a:L:ydcbps:" opt; do
     case ${opt} in
         h ) HEADER_IMG="$OPTARG" ;;
         t ) TAIL_IMG="$OPTARG" ;;
         o ) OUTPUT_FILE="$OPTARG" ;;
         a ) AUDIO_FILE="$OPTARG" ;;
+        L ) TARGET_DURATION_RAW="$OPTARG" ;;
         y ) OVERWRITE_OUTPUT="-y" ;;
         d ) DYNAMIC_MODE=true ;;
         c ) CROP_MODE=true ;;
@@ -142,7 +171,24 @@ FIXED_OVERHEAD=$(awk "BEGIN {printf \"%.4f\", $HEADER_OVERHEAD + $TAIL_OVERHEAD}
 
 # 3. Calculate Slide Durations Array
 DURATIONS=()
-if [ "$BEAT_MODE" = true ]; then
+
+if [ -n "$TARGET_DURATION_RAW" ]; then
+    TARGET_SECONDS=$(parse_time_to_seconds "$TARGET_DURATION_RAW")
+    is_valid_target=$(awk "BEGIN {print ($TARGET_SECONDS > $FIXED_OVERHEAD) ? 1 : 0}")
+    
+    if [ "$is_valid_target" -ne 1 ]; then
+        echo "Error: Specified length ($TARGET_SECONDSs) must be greater than header/tail overhead (${FIXED_OVERHEAD}s)." >&2
+        exit 1
+    fi
+
+    # Compute slide duration required to reach exact target video length
+    slide_duration=$(awk "BEGIN {printf \"%.4f\", ($TARGET_SECONDS - $FIXED_OVERHEAD) / $NUM_IMAGES}")
+    echo "Explicit Length Target (-L): $TARGET_DURATION_RAW (${TARGET_SECONDS}s)"
+    echo "  -> Override active: Each of $NUM_IMAGES slides set to ${slide_duration}s."
+
+    for ((i=0; i<NUM_IMAGES; i++)); do DURATIONS+=("$slide_duration"); done
+
+elif [ "$BEAT_MODE" = true ]; then
     if ! command -v aubiocut &>/dev/null; then
         echo "Error: Beat mode (-b) requires 'aubiocut', but it is not installed or in PATH." >&2
         exit 1
@@ -188,7 +234,7 @@ done
 echo "Calculated total timeline duration: ${expected_video_duration}s"
 
 # 4. Short Audio Warning System
-if [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ] && [ "$BEAT_MODE" = false ]; then
+if [ -z "$TARGET_DURATION_RAW" ] && [ "$AUDIO_FILE" != "/dev/null" ] && [ "$DYNAMIC_MODE" = false ] && [ "$BEAT_MODE" = false ]; then
     is_audio_shorter=$(awk "BEGIN {print ($AUDIO_LEN < $expected_video_duration) ? 1 : 0}")
     if [ "$is_audio_shorter" -eq 1 ]; then
         echo "************************************************************************"
@@ -295,8 +341,8 @@ if [ "$AUDIO_FILE" = "/dev/null" ]; then
     AUDIO_FILTER="[1:a]amix=inputs=1[audio_out]"
 else
     FFMPEG_AUDIO_ARGS+=("-i" "$AUDIO_FILE" "-f" "lavfi" "-i" "anullsrc=channel_layout=stereo:sample_rate=44100")
-    if [ "$DYNAMIC_MODE" = true ]; then
-        AUDIO_FILTER="[1:a][2:a]amix=inputs=2:duration=longest[audio_out]"
+    if [ -n "$TARGET_DURATION_RAW" ] || [ "$DYNAMIC_MODE" = true ]; then
+        AUDIO_FILTER="[1:a][2:a]amix=inputs=2:duration=first[audio_out]"
     else
         FADE_DURATION="4.0"
         fade_start=$(awk "BEGIN {val = $expected_video_duration - $FADE_DURATION; print (val > 0) ? val : 0}")
