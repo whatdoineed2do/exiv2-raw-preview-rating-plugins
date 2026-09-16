@@ -39,7 +39,7 @@ usage() {
     echo "  -a : Path to audio file or /dev/null (Optional)"
     echo "  -y : Overwrite output file without asking"
     echo "  -d : Enable dynamic timing mode"
-    echo "  -c : Enable smart crop mode"
+    echo "  -c : Enable smart crop mode (center crop landscape; blur pad portrait; direct scale 16:9)"
     echo "  -b : Enable beat timing mode"
     echo "  -p : Preserve temp concat text config file"
     echo "  -s : Beat detection sensitivity (default: 0.3)"
@@ -50,7 +50,6 @@ usage() {
 parse_time_to_seconds() {
     local raw_time="$1"
     awk -v t="$raw_time" 'BEGIN {
-        # Normalize colons or dots used as millisecond separators
         gsub(/\./, ":", t);
         n = split(t, parts, ":");
         if (n == 1) {
@@ -60,7 +59,6 @@ parse_time_to_seconds() {
         } else if (n == 3) {
             sec = (parts[1] * 3600) + (parts[2] * 60) + parts[3];
         } else if (n == 4) {
-            # HH : MM : SS : MS
             ms = parts[4];
             while (length(ms) < 3) ms = ms "0";
             ms_val = ("0." ms) + 0.0;
@@ -175,13 +173,12 @@ DURATIONS=()
 if [ -n "$TARGET_DURATION_RAW" ]; then
     TARGET_SECONDS=$(parse_time_to_seconds "$TARGET_DURATION_RAW")
     is_valid_target=$(awk "BEGIN {print ($TARGET_SECONDS > $FIXED_OVERHEAD) ? 1 : 0}")
-    
+
     if [ "$is_valid_target" -ne 1 ]; then
         echo "Error: Specified length ($TARGET_SECONDSs) must be greater than header/tail overhead (${FIXED_OVERHEAD}s)." >&2
         exit 1
     fi
 
-    # Compute slide duration required to reach exact target video length
     slide_duration=$(awk "BEGIN {printf \"%.4f\", ($TARGET_SECONDS - $FIXED_OVERHEAD) / $NUM_IMAGES}")
     echo "Explicit Length Target (-L): $TARGET_DURATION_RAW (${TARGET_SECONDS}s)"
     echo "  -> Override active: Each of $NUM_IMAGES slides set to ${slide_duration}s."
@@ -252,17 +249,17 @@ STD_FILTER="scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(
 
 # Render black spacer clip only if needed
 if [ -n "$HEADER_ABS" ] || [ -n "$TAIL_ABS" ]; then
-    ffmpeg -y -loglevel error -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP" || exit 1
+    ffmpeg -y -loglevel error -threads 0 -f lavfi -i color=c=black:s=1920x1080:r=30 -vf "format=yuv420p" -r 30 -t 0.3 -c:v mjpeg -q:v 2 "$TMP_BLACK_CLIP" || exit 1
 fi
 
 # Render header clip if provided
 if [ -n "$HEADER_ABS" ]; then
-    ffmpeg -y -loglevel error -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP" || exit 1
+    ffmpeg -y -loglevel error -threads 0 -loop 1 -i "$HEADER_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_HEADER_CLIP" || exit 1
 fi
 
 # Render tail clip if provided
 if [ -n "$TAIL_ABS" ]; then
-    ffmpeg -y -loglevel error -loop 1 -i "$TAIL_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP" || exit 1
+    ffmpeg -y -loglevel error -threads 0 -loop 1 -i "$TAIL_ABS" -vf "$STD_FILTER" -r 30 -t 2.0 -c:v mjpeg -q:v 2 "$TMP_TAIL_CLIP" || exit 1
 fi
 
 VALID_CLIPS=()
@@ -288,13 +285,57 @@ for i in "${!FINAL_IMAGES[@]}"; do
         fi
     fi
 
+    # Read visually oriented image dimensions via ffprobe (accounting for EXIF rotation)
+    img_w=0
+    img_h=0
+    # Extract dimensions using ffprobe with fallback defaults
+    eval $(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of flat "$src_img" 2>/dev/null | sed 's/streams.stream.0./img_/')
+    
+    # Fallback to exiftool if ffprobe failed to extract width/height
+    if [ -z "$img_w" ] || [ "$img_w" -eq 0 ] 2>/dev/null; then
+        if command -v exiftool &>/dev/null; then
+            img_w=$(exiftool -s3 -ImageWidth "$src_img" 2>/dev/null)
+            img_h=$(exiftool -s3 -ImageHeight "$src_img" 2>/dev/null)
+        fi
+    fi
+
+    # Calculate metrics with strict non-zero checking
+    EVAL_RESULT=$(awk -v w="${img_w:-0}" -v h="${img_h:-0}" 'BEGIN {
+        if (h <= 0 || w <= 0) {
+            print "0 0"; # invalid dimensions fallback
+            exit;
+        }
+        ratio = w / h;
+        target = 16.0 / 9.0;
+        diff = ratio - target;
+        if (diff < 0) diff = -diff;
+        
+        is_16_9 = (diff < 0.02) ? 1 : 0;
+        is_portrait = (h > w) ? 1 : 0;
+        
+        print is_16_9 " " is_portrait;
+    }')
+
+    IS_16_9=$(echo "$EVAL_RESULT" | awk '{print $1}')
+    IS_PORTRAIT=$(echo "$EVAL_RESULT" | awk '{print $2}')
+
     if [ "$CROP_MODE" = true ]; then
-        FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale='if(gt(iw\,ih)\,1920\,-1)':'if(gt(iw\,ih)\,-1\,1080)'[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,crop=1920:1080,setsar=1"
+        if [ "$IS_16_9" -eq 1 ]; then
+            # Direct scale for 16:9 matching frames
+            FILTER_PRESET="scale=1920:1080,setsar=1,format=yuv420p"
+        elif [ "$IS_PORTRAIT" -eq 1 ]; then
+            # Strict Portrait (H > W): Blurred background padding
+            FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
+        else
+            # 3:2, 4:3, etc. Landscape (W > H): Scale & Center Crop top/bottom
+            FILTER_PRESET="scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p"
+        fi
     else
+        # Standard mode: Fit everything over blurred background padding
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
     fi
 
-    ffmpeg -y -loglevel error -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
+    ffmpeg -y -loglevel error -threads 0 -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
 
     if [ -s "$clip_out" ]; then
         VALID_CLIPS+=("$clip_out")
