@@ -288,10 +288,10 @@ for i in "${!FINAL_IMAGES[@]}"; do
     # Read visually oriented image dimensions via ffprobe (accounting for EXIF rotation)
     img_w=0
     img_h=0
-    # Extract dimensions using ffprobe with fallback defaults
+# Extract dimensions using ffprobe
     eval $(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of flat "$src_img" 2>/dev/null | sed 's/streams.stream.0./img_/')
     
-    # Fallback to exiftool if ffprobe failed to extract width/height
+    # Fallback to exiftool if ffprobe failed to extract dimensions
     if [ -z "$img_w" ] || [ "$img_w" -eq 0 ] 2>/dev/null; then
         if command -v exiftool &>/dev/null; then
             img_w=$(exiftool -s3 -ImageWidth "$src_img" 2>/dev/null)
@@ -299,10 +299,10 @@ for i in "${!FINAL_IMAGES[@]}"; do
         fi
     fi
 
-    # Calculate metrics with strict non-zero checking
+    # Calculate metrics & resolution tiering
     EVAL_RESULT=$(awk -v w="${img_w:-0}" -v h="${img_h:-0}" 'BEGIN {
         if (h <= 0 || w <= 0) {
-            print "0 0"; # invalid dimensions fallback
+            print "0 0 1"; # Default fallback: treated as low-res/invalid
             exit;
         }
         ratio = w / h;
@@ -313,27 +313,36 @@ for i in "${!FINAL_IMAGES[@]}"; do
         is_16_9 = (diff < 0.02) ? 1 : 0;
         is_portrait = (h > w) ? 1 : 0;
         
-        print is_16_9 " " is_portrait;
+        # Consider image low-res
+        is_low_res = (w < 1080 || h < 720) ? 1 : 0;
+        
+        print is_16_9 " " is_portrait " " is_low_res;
     }')
 
     IS_16_9=$(echo "$EVAL_RESULT" | awk '{print $1}')
     IS_PORTRAIT=$(echo "$EVAL_RESULT" | awk '{print $2}')
+    IS_LOW_RES=$(echo "$EVAL_RESULT" | awk '{print $3}')
 
     if [ "$CROP_MODE" = true ]; then
-        if [ "$IS_16_9" -eq 1 ]; then
-            # Direct scale for 16:9 matching frames
+        if [ "$IS_16_9" -eq 1 ] && [ "$IS_LOW_RES" -eq 0 ]; then
+            # High-res 16:9 Match: Direct scale to 1920x1080 (no blur, no crop)
             FILTER_PRESET="scale=1920:1080,setsar=1,format=yuv420p"
-        elif [ "$IS_PORTRAIT" -eq 1 ]; then
-            # Strict Portrait (H > W): Blurred background padding
+
+        elif [ "$IS_PORTRAIT" -eq 1 ] || [ "$IS_LOW_RES" -eq 1 ]; then
+            # Portrait OR Low-Res Landscape (e.g. 640x480):
+            # Scale low-res image gently (without severe pixelation) over a 1920x1080 blurred background
             FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
+
         else
-            # 3:2, 4:3, etc. Landscape (W > H): Scale & Center Crop top/bottom
+            # Moderate/High-Res Landscape (3:2, 4:3 with >= 1280x720):
+            # Upscale and center-crop to cleanly fill 16:9 frame
             FILTER_PRESET="scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p"
         fi
     else
-        # Standard mode: Fit everything over blurred background padding
+        # Standard Mode (no -c): All images fitted over blurred background
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
     fi
+
 
     ffmpeg -y -loglevel error -threads 0 -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
 
