@@ -285,26 +285,35 @@ for i in "${!FINAL_IMAGES[@]}"; do
         fi
     fi
 
-    # Read visually oriented image dimensions via ffprobe (accounting for EXIF rotation)
+# Extract dimensions and numeric orientation tag via exiftool with ffprobe fallback
     img_w=0
     img_h=0
-# Extract dimensions using ffprobe
-    eval $(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of flat "$src_img" 2>/dev/null | sed 's/streams.stream.0./img_/')
-    
-    # Fallback to exiftool if ffprobe failed to extract dimensions
-    if [ -z "$img_w" ] || [ "$img_w" -eq 0 ] 2>/dev/null; then
-        if command -v exiftool &>/dev/null; then
-            img_w=$(exiftool -s3 -ImageWidth "$src_img" 2>/dev/null)
-            img_h=$(exiftool -s3 -ImageHeight "$src_img" 2>/dev/null)
-        fi
+    orient=1
+
+    if command -v exiftool &>/dev/null; then
+        read -r img_w img_h orient < <(exiftool -s3 -fast2 -ImageWidth -ImageHeight -Orientation# "$src_img" 2>/dev/null | tr '\n' ' ')
     fi
 
-    # Calculate metrics & resolution tiering
-    EVAL_RESULT=$(awk -v w="${img_w:-0}" -v h="${img_h:-0}" 'BEGIN {
+    # Fallback to ffprobe if exiftool is not installed or returns empty data
+    if [ -z "$img_w" ] || [ "$img_w" -eq 0 ] 2>/dev/null; then
+        eval $(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of flat "$src_img" 2>/dev/null | sed 's/streams.stream.0./img_/')
+        orient=1
+    fi
+
+    # Calculate metrics & resolution tiering accounting for EXIF orientation
+    EVAL_RESULT=$(awk -v w="${img_w:-0}" -v h="${img_h:-0}" -v o="${orient:-1}" 'BEGIN {
         if (h <= 0 || w <= 0) {
-            print "0 0 1"; # Default fallback: treated as low-res/invalid
+            print "0 0 1"; # Default fallback: treat invalid files as low-res/padded
             exit;
         }
+
+        # EXIF Orientation tags 5, 6, 7, 8 require a 90 or 270 degree rotation swap
+        if (o == 5 || o == 6 || o == 7 || o == 8) {
+            tmp = w;
+            w = h;
+            h = tmp;
+        }
+
         ratio = w / h;
         target = 16.0 / 9.0;
         diff = ratio - target;
@@ -313,8 +322,8 @@ for i in "${!FINAL_IMAGES[@]}"; do
         is_16_9 = (diff < 0.02) ? 1 : 0;
         is_portrait = (h > w) ? 1 : 0;
         
-        # Consider image low-res
-        is_low_res = (w < 1080 || h < 720) ? 1 : 0;
+        # Consider image low-res if visual width < 1280 OR height < 720
+        is_low_res = (w < 1280 || h < 720) ? 1 : 0;
         
         print is_16_9 " " is_portrait " " is_low_res;
     }')
@@ -325,24 +334,23 @@ for i in "${!FINAL_IMAGES[@]}"; do
 
     if [ "$CROP_MODE" = true ]; then
         if [ "$IS_16_9" -eq 1 ] && [ "$IS_LOW_RES" -eq 0 ]; then
-            # High-res 16:9 Match: Direct scale to 1920x1080 (no blur, no crop)
+            # High-res 16:9 Match: Direct scale (no blur, no crop)
             FILTER_PRESET="scale=1920:1080,setsar=1,format=yuv420p"
 
         elif [ "$IS_PORTRAIT" -eq 1 ] || [ "$IS_LOW_RES" -eq 1 ]; then
-            # Portrait OR Low-Res Landscape (e.g. 640x480):
-            # Scale low-res image gently (without severe pixelation) over a 1920x1080 blurred background
+            # Portrait OR Low-Res Landscape (e.g., 640x480):
+            # Scale full image over 1920x1080 blurred background
             FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
 
         else
             # Moderate/High-Res Landscape (3:2, 4:3 with >= 1280x720):
-            # Upscale and center-crop to cleanly fill 16:9 frame
+            # Scale to fill frame and center-crop top/bottom
             FILTER_PRESET="scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p"
         fi
     else
-        # Standard Mode (no -c): All images fitted over blurred background
+        # Standard Mode (no -c): Fit all images over blurred background padding
         FILTER_PRESET="format=yuv420p,split[bg][fg];[bg]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=20[bg_blurred];[fg]scale=1920:1080:force_original_aspect_ratio=decrease[fg_scaled];[bg_blurred][fg_scaled]overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,setsar=1"
     fi
-
 
     ffmpeg -y -loglevel error -threads 0 -loop 1 -i "$src_img" -vf "$FILTER_PRESET" -r 30 -t "$dur" -c:v mjpeg -q:v 2 "$clip_out"
 
