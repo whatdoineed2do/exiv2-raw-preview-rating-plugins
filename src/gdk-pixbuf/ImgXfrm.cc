@@ -276,7 +276,7 @@ void  ImgXfrmsRGB::_transform() const
 	     * image if its not a Nikon RAW with the colr space set
 	     */
 
-	    std::any_of(colrSpcs.begin(), colrSpcs.end(), [&convert, &d, this](const auto& cs_)
+	    convert = std::any_of(colrSpcs.begin(), colrSpcs.end(), [&d, this](const auto& cs_)
 	    {
 		if ( (d = exif.findKey(Exiv2::ExifKey(cs_.key)) ) == exif.end()) {
 		    return false;
@@ -317,9 +317,10 @@ void  ImgXfrmsRGB::_transform() const
 		    }
 
 		    if (doit) {
-			convert = true;
 			magick.profile("ICC", argbICC);
+			return true;
 		    }
+		    return false;
 		}
 		return true;
 	    });
