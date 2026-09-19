@@ -21,7 +21,7 @@
 
 #include <ExifProxy.h>
 
-#define G_LOG_DOMAIN_EOG_EXIV2  eog:exiv2-rating
+#define G_LOG_DOMAIN_EOG_EXIV2  "eog:exiv2-rating"
 
 
 namespace {

@@ -3,22 +3,31 @@ name: C/C++ CI
 on:
   push:
     branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+
     - name: install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -yq \
-        build-essential git autotools-dev autoconf autoconf-archive libtool \
+        build-essential git autotools-dev autoconf autoconf-archive libtool pkg-config \
         libmagick++-dev \
         libexiv2-dev \
         libgtk2.0-dev libpeas-dev eog-dev eom-dev
+
+    - name: Configure GTK and Toolchain Environment
+      run: |
+        # Export GTK compilation flags explicitly to the GitHub Action runner environment
+        echo "CFLAGS=$(pkg-config --cflags gtk+-2.0) $CFLAGS" >> $GITHUB_ENV
+        echo "CXXFLAGS=$(pkg-config --cflags gtk+-2.0) $CXXFLAGS" >> $GITHUB_ENV
 
     - name: Build all
       run: |
