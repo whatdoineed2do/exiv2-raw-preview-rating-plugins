@@ -100,16 +100,6 @@ if test "x$debug" = xno; then
 	AC_DEFINE(NDEBUG,1,[debug code])
 fi
 
-
-if test "x$use_eog" = "xno" ; then
-    sed -i "s/eog-plugin//" src/Makefile.am
-fi
-
-if test "x$use_eom" = "xno" ; then
-    sed -i "s/eom-plugin//" src/Makefile.am
-fi
-
-
 if test "x$need_peas" != "xyes" ; then
     sed -i "s/lib//" src/Makefile.am
 fi
