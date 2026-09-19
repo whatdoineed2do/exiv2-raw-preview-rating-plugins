@@ -3,6 +3,8 @@ name: C/C++ CI
 on:
   push:
     branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
   build:
@@ -10,15 +12,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4 # Upgraded to v4 for compatibility and performance
+
     - name: install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -yq \
         build-essential git autotools-dev autoconf autoconf-archive libtool \
-        libmagick++-dev \
         libexiv2-dev \
-        libgtk2.0-dev libpeas-dev eog-dev eom-dev
+        libgtk2.0-dev libpeas-dev eog-dev eom-dev \
+        libpng-dev libjpeg-dev libtiff-dev libwebp-dev # Image delegates needed for ImageMagick 7
+
+    - name: Cache ImageMagick 7 Source and Build
+      id: cache-imagemagick
+      uses: actions/cache@v4
+      with:
+        path: /usr/local
+        key: ${{ runner.os }}-imagemagick-7.1.2
+
+    - name: Compile and Install ImageMagick++ 7
+      if: steps.cache-imagemagick.outputs.cache-hit != 'true'
+      run: |
+        wget https://imagemagick.org
+        tar -xf ImageMagick.tar.gz
+        cd ImageMagick-7.*
+        ./configure --with-magick-plus-plus=yes --enable-shared
+        make -j$(nproc)
+        sudo make install
+        sudo ldconfig
+
+    - name: Configure Environment
+      run: |
+        sudo ldconfig
+        # Sets PKG_CONFIG_PATH globally across all subsequent runner steps
+        echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
     - name: Build all
       run: |
