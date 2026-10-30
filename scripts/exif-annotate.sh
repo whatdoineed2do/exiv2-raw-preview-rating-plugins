@@ -13,6 +13,7 @@ IM_ROUNDING_RADIUS="${IM_ROUNDING_RADIUS:-12}"
 IM_FONT="${IM_FONT:-Oxanium-Regular}"
 EXIF_FORMAT="${EXIF_FORMAT:-\$LensID @ f/\$Aperture}"
 IM_CROP="${IM_CROP:-}" # Clear by default
+IM_QUALITY="${IM_QUALITY:-100}" # Default to maximum quality
 
 OUT_PREFIX=exif-annotated
 
@@ -34,13 +35,14 @@ usage() {
     echo "  -e <format>  Exiftool format      (${EXIF_FORMAT})"
     echo "  -t <text>    additional annotation"
     echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
+    echo "  -q <quality> Output image quality (${IM_QUALITY})"
     echo "  -o <prefix>  output prefix        (${OUT_PREFIX})"
     echo "  -h           Display this help message and exit"
     exit 0
 }
 
-# Parse options using getopts (Added C: to option string)
-while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:h" opt; do
+# Parse options using getopts (Added q: to option string)
+while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:q:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
         c) IM_BOUND_TEXT_COLOUR="$OPTARG" ;;
@@ -55,6 +57,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:h" opt; do
         t) EXTRA_TEXT="$OPTARG" ;;
         e) EXIF_FORMAT="$OPTARG" ;;
         C) IM_CROP="$OPTARG" ;;
+        q) IM_QUALITY="$OPTARG" ;;
         h) usage ;;
         ?) usage ;;
     esac
@@ -119,6 +122,7 @@ EOF
       -gravity ${IM_TEXT_LOCATION} \
       -geometry "+${X_OFF}+${Y_OFF}" \
       -composite \
+      -quality "${IM_QUALITY}" \
       "${OUT_PREFIX}$i"
 done
 
