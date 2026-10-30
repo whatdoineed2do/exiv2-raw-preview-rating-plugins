@@ -12,6 +12,7 @@ IM_PADDING_RATIO="${IM_PADDING_RATIO:-0.03}"
 IM_ROUNDING_RADIUS="${IM_ROUNDING_RADIUS:-12}"
 IM_FONT="${IM_FONT:-Oxanium-Regular}"
 EXIF_FORMAT="${EXIF_FORMAT:-\$LensID @ f/\$Aperture}"
+IM_CROP="${IM_CROP:-}" # Clear by default
 
 OUT_PREFIX=exif-annotated
 
@@ -32,13 +33,14 @@ usage() {
     echo "  -f <font>    Font name            (${IM_FONT})"
     echo "  -e <format>  Exiftool format      (${EXIF_FORMAT})"
     echo "  -t <text>    additional annotation"
+    echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
     echo "  -o <prefix>  output prefix        (${OUT_PREFIX})"
     echo "  -h           Display this help message and exit"
     exit 0
 }
 
-# Parse options using getopts
-while getopts "l:c:b:O:y:x:p:r:f:o:t:e:h" opt; do
+# Parse options using getopts (Added C: to option string)
+while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
         c) IM_BOUND_TEXT_COLOUR="$OPTARG" ;;
@@ -52,6 +54,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:h" opt; do
         o) OUT_PREFIX="$OPTARG" ;;
         t) EXTRA_TEXT="$OPTARG" ;;
         e) EXIF_FORMAT="$OPTARG" ;;
+        C) IM_CROP="$OPTARG" ;;
         h) usage ;;
         ?) usage ;;
     esac
@@ -79,18 +82,23 @@ for i in "$@"; do
 	fi
     fi
 
-    DIM=$(magick "$i" ${IM_CROP} -format "%wx%h" info:)
-    IM_TEXT="${EXIF_DATA}${EXTRA_TEXT}"
+    # Conditionally build the crop flag string array
+    CROP_ARGS=()
+    if [ ! -z "${IM_CROP}" ]; then
+        CROP_ARGS=(-crop "${IM_CROP}")
+    fi
 
+    IM_TEXT="${EXIF_DATA}${EXTRA_TEXT}"
     IM_LEN=$(echo "$IM_TEXT" | awk '{ if (length($0) > max) max = length($0) } END { print max }')
 
-    P_SIZE=$(magick "$i" ${IM_CROP} -format "%[fx:(w*0.5)/($IM_LEN*0.6)]" info:)
-    X_OFF=$(magick "$i" ${IM_CROP} -format "%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]" info:)
-    Y_OFF=$(magick "$i" ${IM_CROP} -format "%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
+    # Combined single lookup pass to drastically optimize performance
+    IFS="|" read -r DIM P_SIZE X_OFF Y_OFF <<EOF
+$(magick "$i" "${CROP_ARGS[@]}" -format "%wx%h|%[fx:(w*0.5)/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
+EOF
 
     # 3. Generate the final cropped image with perfectly left-aligned text lines
     magick "$i" \
-      ${IM_CROP} \
+      "${CROP_ARGS[@]}" \
       \( -background none \
          -fill ${IM_BOUND_TEXT_COLOUR} ${IM_STROKE} \
          -font ${IM_FONT} \
