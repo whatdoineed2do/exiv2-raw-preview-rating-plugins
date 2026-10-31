@@ -14,6 +14,7 @@ IM_FONT="Oxanium-Regular"
 EXIF_FORMAT="\$LensID @ f/\$Aperture"
 IM_CROP="" # Default no crop, full image
 IM_QUALITY="100" # Default to maximum quality
+IM_RESIZE="" # Clear by default
 
 OUT_PREFIX=exif-annotated
 
@@ -35,13 +36,15 @@ usage() {
     echo "  -e <format>  Exiftool format      (${EXIF_FORMAT})"
     echo "  -t <text>    additional annotation"
     echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
+    echo "  -R <resize>  Final resize spec (e.g., 12.1mp or 1920x1080)"
     echo "  -q <quality> Output image quality (${IM_QUALITY})"
     echo "  -o <prefix>  output prefix        (${OUT_PREFIX})"
     echo "  -h           Display this help message and exit"
     exit 0
 }
 
-while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:q:h" opt; do
+# Parse options using getopts (Added R: for resize)
+while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:q:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
         c) IM_BOUND_TEXT_COLOUR="$OPTARG" ;;
@@ -56,6 +59,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:q:h" opt; do
         t) EXTRA_TEXT="$OPTARG" ;;
         e) EXIF_FORMAT="$OPTARG" ;;
         C) IM_CROP="$OPTARG" ;;
+        R) IM_RESIZE="$OPTARG" ;;
         q) IM_QUALITY="$OPTARG" ;;
         h) usage ;;
         ?) usage ;;
@@ -68,6 +72,22 @@ if [ $# -eq 0 ]; then
     echo "Error: No input files specified."
     echo ""
     usage
+fi
+
+# Parse/convert resize argument if provided
+FINAL_RESIZE_ARG=()
+if [ -n "$IM_RESIZE" ]; then
+    # Check if input ends with 'mp' or 'MP' (case-insensitive)
+    if [[ "$IM_RESIZE" =~ ^[0-9]+(\.[0-9]+)?[mMoOpP]{2}$ ]]; then
+        # Strip trailing 'mp'/'MP'
+        num_val="${IM_RESIZE%[mM][pP]}"
+        # Convert megapixels to precise pixel count using awk (e.g., 12.1 * 1000000 = 12100000)
+        pixel_count=$(awk -v val="$num_val" 'BEGIN { printf "%.0f", val * 1000000 }')
+        FINAL_RESIZE_ARG=(-resize "${pixel_count}@")
+    else
+        # Use user-provided specific dimension/geometry directly
+        FINAL_RESIZE_ARG=(-resize "$IM_RESIZE")
+    fi
 fi
 
 failed_files=()
@@ -98,7 +118,7 @@ for i in "$@"; do
 $(magick "$i" "${CROP_ARGS[@]}" -format "%wx%h|%[fx:(w*0.5)/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
 EOF
 
-    # 3. Generate the final cropped image with perfectly left-aligned text lines
+    # 3. Generate the final cropped image, apply overlay text, and resize at the very end
     magick "$i" \
       "${CROP_ARGS[@]}" \
       \( -background none \
@@ -121,6 +141,7 @@ EOF
       -gravity ${IM_TEXT_LOCATION} \
       -geometry "+${X_OFF}+${Y_OFF}" \
       -composite \
+      "${FINAL_RESIZE_ARG[@]}" \
       -quality "${IM_QUALITY}" \
       "${OUT_PREFIX}$i"
 done
