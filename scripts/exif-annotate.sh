@@ -1,19 +1,19 @@
 #!/bin/bash
 #
 
-# Default values, falling back to environment variables if set
-IM_TEXT_LOCATION="${IM_TEXT_LOCATION:-northwest}"
-IM_BOUND_TEXT_COLOUR="${IM_BOUND_TEXT_COLOUR:-white}"
-IM_BOUND_BOX_COLOUR="${IM_BOUND_BOX_COLOUR:-grey20}"
-IM_BOUND_BOX_OPACITY="${IM_BOUND_BOX_OPACITY:-0.6}"
-IM_BOUND_TEXT_Y_OFFSET="${IM_BOUND_TEXT_Y_OFFSET:-0.05}"
-IM_BOUND_TEXT_X_OFFSET="${IM_BOUND_TEXT_X_OFFSET:-0.05}"
-IM_PADDING_RATIO="${IM_PADDING_RATIO:-0.03}"
-IM_ROUNDING_RADIUS="${IM_ROUNDING_RADIUS:-12}"
-IM_FONT="${IM_FONT:-Oxanium-Regular}"
-EXIF_FORMAT="${EXIF_FORMAT:-\$LensID @ f/\$Aperture}"
-IM_CROP="${IM_CROP:-}" # Clear by default
-IM_QUALITY="${IM_QUALITY:-100}" # Default to maximum quality
+# Default values (hardcoded, ignoring environment variables)
+IM_TEXT_LOCATION="northwest"
+IM_BOUND_TEXT_COLOUR="white"
+IM_BOUND_BOX_COLOUR="grey20"
+IM_BOUND_BOX_OPACITY="0.6"
+IM_BOUND_TEXT_Y_OFFSET="0.05"
+IM_BOUND_TEXT_X_OFFSET="0.05"
+IM_PADDING_RATIO="0.03"
+IM_ROUNDING_RADIUS="12"
+IM_FONT="Oxanium-Regular"
+EXIF_FORMAT="\$LensID @ f/\$Aperture"
+IM_CROP="" # Default no crop, full image
+IM_QUALITY="100" # Default to maximum quality
 
 OUT_PREFIX=exif-annotated
 
@@ -41,7 +41,6 @@ usage() {
     exit 0
 }
 
-# Parse options using getopts (Added q: to option string)
 while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:q:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
