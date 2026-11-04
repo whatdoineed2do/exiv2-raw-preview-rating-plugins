@@ -16,6 +16,7 @@ IM_CROP="" # Default no crop, full image
 IM_QUALITY="100" # Default to maximum quality
 IM_RESIZE="" # Clear by default
 GENERATE_OVERLAY=0 # Default to normal direct-image annotation
+ALLOW_EMPTY_EXIF=0 # Default to requiring valid EXIF data
 
 OUT_PREFIX=exif-annotated
 
@@ -36,6 +37,7 @@ usage() {
     echo "  -f <font>    Font name            (${IM_FONT})"
     echo "  -e <format>  Exiftool format      (${EXIF_FORMAT})"
     echo "  -t <text>    additional annotation"
+    echo "  -F           Allow missing EXIF data if custom text (-t) is provided"
     echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
     echo "  -R <resize>  Final resize spec (e.g., 12.1mp or 1920x1080)"
     echo "  -T           Generate standalone transparent overlay PNG (use 'magick input.jpg output-of-T.png -composite output.jpg')"
@@ -45,8 +47,7 @@ usage() {
     exit 0
 }
 
-# Parse options using getopts (Added T for transparent overlay mode)
-while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:Tq:h" opt; do
+while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:TFq:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
         c) IM_BOUND_TEXT_COLOUR="$OPTARG" ;;
@@ -60,6 +61,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:Tq:h" opt; do
         o) OUT_PREFIX="$OPTARG" ;;
         t) EXTRA_TEXT="$OPTARG" ;;
         e) EXIF_FORMAT="$OPTARG" ;;
+        F) ALLOW_EMPTY_EXIF=1 ;;
         C) IM_CROP="$OPTARG" ;;
         R) IM_RESIZE="$OPTARG" ;;
         T) GENERATE_OVERLAY=1 ;;
@@ -94,9 +96,15 @@ failed_files=()
 for i in "$@"; do
     if [ ! -z "${EXIF_FORMAT}" ]; then
 	EXIF_DATA="$(exiftool -s3 -p "$EXIF_FORMAT" "$i" 2>/dev/null)"
+	
+	# If EXIF data is empty, check if -F was passed and -t text exists
 	if [ -z "$EXIF_DATA" ]; then
-	    failed_files+=("$i")
-	    continue
+	    if [ "$ALLOW_EMPTY_EXIF" -eq 1 ] && [ -n "${EXTRA_TEXT:-}" ]; then
+	        EXIF_DATA=""
+	    else
+	        failed_files+=("$i")
+	        continue
+	    fi
 	fi
     fi
 
