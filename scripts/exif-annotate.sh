@@ -121,9 +121,11 @@ for i in "$@"; do
 $(magick "$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}" -format "%wx%h|%[fx:(w*0.5)/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
 EOF
 
+    # Strip path from input file for clean local output naming
+    base_name="$(basename "$i")"
+
     if [ "$GENERATE_OVERLAY" -eq 1 ]; then
         # Standalone Transparent Overlay Mode (-T)
-        base_name="$(basename "$i")"
         name_no_ext="${base_name%.*}"
         output_filename="${OUT_PREFIX}${name_no_ext}.png"
 
@@ -176,7 +178,7 @@ EOF
           -composite \
           "${FINAL_RESIZE_ARG[@]}" \
           -quality "${IM_QUALITY}" \
-          "${OUT_PREFIX}$i"
+          "${OUT_PREFIX}${base_name}"
     fi
 done
 
