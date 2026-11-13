@@ -156,6 +156,7 @@ EOF
         # Standard Direct-Image Annotation Mode (Default behavior)
         magick "$i" \
           "${CROP_ARGS[@]}" \
+          "${FINAL_RESIZE_ARG[@]}" \
           \( -background none \
              -fill ${IM_BOUND_TEXT_COLOUR} ${IM_STROKE} \
              -font ${IM_FONT} \
@@ -176,7 +177,6 @@ EOF
           -gravity ${IM_TEXT_LOCATION} \
           -geometry "+${X_OFF}+${Y_OFF}" \
           -composite \
-          "${FINAL_RESIZE_ARG[@]}" \
           -quality "${IM_QUALITY}" \
           "${OUT_PREFIX}${base_name}"
     fi
