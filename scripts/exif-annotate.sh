@@ -11,6 +11,7 @@ IM_BOUND_TEXT_X_OFFSET="0.05"
 IM_PADDING_RATIO="0.03"
 IM_ROUNDING_RADIUS="12"
 IM_FONT="Oxanium-Regular"
+IM_TEXT_SCALER="0.35"                   # Text sizing scale factor
 EXIF_FORMAT="\$LensModel @ f/\$Aperture" # Default format string description if -e is used
 CUSTOM_EXIF_FORMAT=0                    # Tracks whether user explicitly passed -e
 IM_CROP=""                              # Default no crop, full image
@@ -36,6 +37,7 @@ usage() {
     echo "  -p <val>     Padding ratio        (${IM_PADDING_RATIO})"
     echo "  -r <val>     Box corner rounding  (${IM_ROUNDING_RADIUS})"
     echo "  -f <font>    Font name            (${IM_FONT})"
+    echo "  -S <scaler>  Text scaling factor  (${IM_TEXT_SCALER})"
     echo "  -e <format>  Exiftool format string (default: smart LensModel -> LensID fallback + Aperture)"
     echo "  -t <text>    additional annotation"
     echo "  -F           Allow missing EXIF data if custom text (-t) is provided"
@@ -48,7 +50,7 @@ usage() {
     exit 0
 }
 
-while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:TFq:h" opt; do
+while getopts "l:c:b:O:y:x:p:r:f:S:o:t:e:C:R:TFq:h" opt; do
     case "${opt}" in
         l) IM_TEXT_LOCATION="$OPTARG" ;;
         c) IM_BOUND_TEXT_COLOUR="$OPTARG" ;;
@@ -59,6 +61,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:TFq:h" opt; do
         p) IM_PADDING_RATIO="$OPTARG" ;;
         r) IM_ROUNDING_RADIUS="$OPTARG" ;;
         f) IM_FONT="$OPTARG" ;;
+        S) IM_TEXT_SCALER="$OPTARG" ;;
         o) OUT_PREFIX="$OPTARG" ;;
         t) EXTRA_TEXT="$OPTARG" ;;
         e) EXIF_FORMAT="$OPTARG"; CUSTOM_EXIF_FORMAT=1 ;;
@@ -135,9 +138,9 @@ for i in "$@"; do
     IM_TEXT="${EXIF_DATA}${EXTRA_TEXT}"
     IM_LEN=$(echo "$IM_TEXT" | awk '{ if (length($0) > max) max = length($0) } END { print max }')
 
-    # Combined single lookup pass
+    # Combined single lookup pass using configurable IM_TEXT_SCALER
     IFS="|" read -r FINAL_DIM P_SIZE X_OFF Y_OFF <<EOF
-$(magick "$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}" -format "%wx%h|%[fx:(w*0.5)/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
+$(magick "$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}" -format "%wx%h|%[fx:(w*${IM_TEXT_SCALER})/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
 EOF
 
     base_name="$(basename "$i")"
