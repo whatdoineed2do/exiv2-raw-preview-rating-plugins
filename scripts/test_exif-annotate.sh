@@ -52,16 +52,27 @@ echo "  -> Assets created in ./${ASSETS_DIR}/"
 echo ""
 
 echo "================================================================="
-echo " RUNNING ANNOTATION SCRIPT WITH UNIFORM TARGET SIZE (-R 1200x)"
+echo " RUNNING TEST MATRIX (Scalers, Locations, Opacities, Offsets, Padding)"
 echo "================================================================="
 
-# Run annotation script targeting 1200px width with custom fallback text (-F -t)
-"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/annotated_" -R "1200x" -F -t "Test Label @ f/2.8" "${ASSETS_DIR}"/*.jpg
+# Test 1: Default Settings (Scaler 0.35, Northwest, Default Opacity/Offsets)
+echo "[Test 1] Default Scaler (0.35) & Northwest Location..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test1_default_" -R "1200x" -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+
+# Test 2: Smaller Scaler (0.25), Southeast Location, High Opacity (0.9)
+echo "[Test 2] Smaller Scaler (0.25), Southeast, High Opacity (0.9)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test2_se_025_op09_" -R "1200x" -S 0.25 -l southeast -O 0.9 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+
+# Test 3: Larger Scaler (0.5), Northeast Location, Custom Offsets (x=0.08, y=0.08)
+echo "[Test 3] Larger Scaler (0.5), Northeast, Custom Offsets..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test3_ne_05_offsets_" -R "1200x" -S 0.5 -l northeast -x 0.08 -y 0.08 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+
+# Test 4: Custom Padding (0.06), Southwest Location, Low Opacity (0.3)
+echo "[Test 4] Southwest, Padding (0.06), Low Opacity (0.3)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test4_sw_pad06_op03_" -R "1200x" -S 0.35 -l southwest -O 0.3 -p 0.06 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
 
 echo ""
 echo "================================================================="
-echo " TEST COMPLETE!"
-echo " Check outputs in ./${OUTPUT_DIR}/"
-echo " Verify that the text and rounded boxes are identical in size"
-echo " across all generated output images regardless of input resolution."
+echo " ALL TESTS COMPLETED SUCCESSFULLY!"
+echo " Inspect output variations inside ./${OUTPUT_DIR}/"
 echo "================================================================="
