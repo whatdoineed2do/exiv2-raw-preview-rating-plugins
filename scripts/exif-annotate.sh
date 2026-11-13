@@ -11,12 +11,13 @@ IM_BOUND_TEXT_X_OFFSET="0.05"
 IM_PADDING_RATIO="0.03"
 IM_ROUNDING_RADIUS="12"
 IM_FONT="Oxanium-Regular"
-EXIF_FORMAT="\$LensID @ f/\$Aperture"
-IM_CROP="" # Default no crop, full image
-IM_QUALITY="100" # Default to maximum quality
-IM_RESIZE="" # Clear by default
-GENERATE_OVERLAY=0 # Default to normal direct-image annotation
-ALLOW_EMPTY_EXIF=0 # Default to requiring valid EXIF data
+EXIF_FORMAT="\$LensModel @ f/\$Aperture" # Default format string description if -e is used
+CUSTOM_EXIF_FORMAT=0                    # Tracks whether user explicitly passed -e
+IM_CROP=""                              # Default no crop, full image
+IM_QUALITY="100"                        # Default to maximum quality
+IM_RESIZE=""                            # Clear by default
+GENERATE_OVERLAY=0                      # Default to normal direct-image annotation
+ALLOW_EMPTY_EXIF=0                      # Default to requiring valid EXIF data
 
 OUT_PREFIX=exif-annotated
 
@@ -35,7 +36,7 @@ usage() {
     echo "  -p <val>     Padding ratio        (${IM_PADDING_RATIO})"
     echo "  -r <val>     Box corner rounding  (${IM_ROUNDING_RADIUS})"
     echo "  -f <font>    Font name            (${IM_FONT})"
-    echo "  -e <format>  Exiftool format      (${EXIF_FORMAT})"
+    echo "  -e <format>  Exiftool format string (default: smart LensModel -> LensID fallback + Aperture)"
     echo "  -t <text>    additional annotation"
     echo "  -F           Allow missing EXIF data if custom text (-t) is provided"
     echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
@@ -60,7 +61,7 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:TFq:h" opt; do
         f) IM_FONT="$OPTARG" ;;
         o) OUT_PREFIX="$OPTARG" ;;
         t) EXTRA_TEXT="$OPTARG" ;;
-        e) EXIF_FORMAT="$OPTARG" ;;
+        e) EXIF_FORMAT="$OPTARG"; CUSTOM_EXIF_FORMAT=1 ;;
         F) ALLOW_EMPTY_EXIF=1 ;;
         C) IM_CROP="$OPTARG" ;;
         R) IM_RESIZE="$OPTARG" ;;
@@ -72,14 +73,12 @@ while getopts "l:c:b:O:y:x:p:r:f:o:t:e:C:R:TFq:h" opt; do
 done
 shift $((OPTIND -1))
 
-# Check if any files were provided
 if [ $# -eq 0 ]; then
     echo "Error: No input files specified."
     echo ""
     usage
 fi
 
-# Parse/convert resize argument if provided
 FINAL_RESIZE_ARG=()
 if [ -n "$IM_RESIZE" ]; then
     if [[ "$IM_RESIZE" =~ ^[0-9]+(\.[0-9]+)?[mMoOpP]{2}$ ]]; then
@@ -94,18 +93,38 @@ fi
 failed_files=()
 
 for i in "$@"; do
+    EXIF_DATA=""
     if [ ! -z "${EXIF_FORMAT}" ]; then
-	EXIF_DATA="$(exiftool -s3 -p "$EXIF_FORMAT" "$i" 2>/dev/null)"
-	
-	# If EXIF data is empty, check if -F was passed and -t text exists
-	if [ -z "$EXIF_DATA" ]; then
-	    if [ "$ALLOW_EMPTY_EXIF" -eq 1 ] && [ -n "${EXTRA_TEXT:-}" ]; then
-	        EXIF_DATA=""
-	    else
-	        failed_files+=("$i")
-	        continue
-	    fi
-	fi
+        if [ "$CUSTOM_EXIF_FORMAT" -eq 1 ]; then
+            # User provided a custom format string via -e
+            EXIF_DATA="$(exiftool -s3 -p "$EXIF_FORMAT" "$i" 2>/dev/null)"
+        else
+            # Default smart extraction: LensModel -> LensID fallback + Aperture
+            LENS_VAL="$(exiftool -s3 -p '$LensModel' "$i" 2>/dev/null)"
+            if [ -z "$LENS_VAL" ] || [ "$LENS_VAL" = "-" ]; then
+                LENS_VAL="$(exiftool -s3 -p '$LensID' "$i" 2>/dev/null)"
+            fi
+
+            APERTURE_VAL="$(exiftool -s3 -p '$Aperture' "$i" 2>/dev/null)"
+
+            if [ -n "$LENS_VAL" ] && [ "$LENS_VAL" != "-" ]; then
+                if [ -n "$APERTURE_VAL" ] && [ "$APERTURE_VAL" != "-" ]; then
+                    EXIF_DATA="${LENS_VAL} @ f/${APERTURE_VAL}"
+                else
+                    EXIF_DATA="${LENS_VAL}"
+                fi
+            fi
+        fi
+        
+        # If EXIF data is empty, check if -F was passed and -t text exists
+        if [ -z "$EXIF_DATA" ]; then
+            if [ "$ALLOW_EMPTY_EXIF" -eq 1 ] && [ -n "${EXTRA_TEXT:-}" ]; then
+                EXIF_DATA=""
+            else
+                failed_files+=("$i")
+                continue
+            fi
+        fi
     fi
 
     CROP_ARGS=()
@@ -121,7 +140,6 @@ for i in "$@"; do
 $(magick "$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}" -format "%wx%h|%[fx:(w*0.5)/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
 EOF
 
-    # Strip path from input file for clean local output naming
     base_name="$(basename "$i")"
 
     if [ "$GENERATE_OVERLAY" -eq 1 ]; then
@@ -153,7 +171,7 @@ EOF
           -quality "${IM_QUALITY}" \
           "$output_filename"
     else
-        # Standard Direct-Image Annotation Mode (Default behavior)
+        # Standard Direct-Image Annotation Mode (Resize applied first for uniform scaling)
         magick "$i" \
           "${CROP_ARGS[@]}" \
           "${FINAL_RESIZE_ARG[@]}" \
