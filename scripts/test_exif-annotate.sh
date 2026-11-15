@@ -71,6 +71,21 @@ echo "[Test 3] Larger Scaler (0.5), Northeast, Custom Offsets..."
 echo "[Test 4] Southwest, Padding (0.06), Low Opacity (0.3)..."
 "$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test4_sw_pad06_op03_" -R "1200x" -S 0.35 -l southwest -O 0.3 -p 0.06 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
 
+# Test 5: Standalone Transparent Overlay Mode (-T)
+echo "[Test 5] Standalone Transparent Overlay Mode (-T)..."
+"$ANNOTATE_SCRIPT" -T -o "${OUTPUT_DIR}/test5_overlay_" -R "1200x" -F -t "Overlay Text @ f/2.8" "${ASSETS_DIR}"/*.jpg
+
+# Demonstrate compositing the generated transparent overlay PNG back onto an image
+if [ -f "${OUTPUT_DIR}/test5_overlay_img_small_400x300.png" ]; then
+    echo "  -> Verifying composition workflow for Test 5 (-T overlay)..."
+    $MAGICK_CMD "${ASSETS_DIR}/img_small_400x300.jpg" \
+        -resize 1200x \
+        "${OUTPUT_DIR}/test5_overlay_img_small_400x300.png" \
+        -composite \
+        "${OUTPUT_DIR}/test5_composited_small_result.jpg"
+    echo "  -> Composited output saved to ./${OUTPUT_DIR}/test5_composited_small_result.jpg"
+fi
+
 echo ""
 echo "================================================================="
 echo " ALL TESTS COMPLETED SUCCESSFULLY!"

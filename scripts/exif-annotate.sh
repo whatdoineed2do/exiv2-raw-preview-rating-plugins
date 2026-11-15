@@ -38,7 +38,7 @@ usage() {
     echo "  -r <val>     Box corner rounding  (${IM_ROUNDING_RADIUS})"
     echo "  -f <font>    Font name            (${IM_FONT})"
     echo "  -S <scaler>  Text scaling factor  (${IM_TEXT_SCALER})"
-    echo "  -e <format>  Exiftool format string (default: smart LensModel -> LensID fallback + Aperture)"
+    echo "  -e <format>  Exiftool format string (${EXIF_FORMAT})"
     echo "  -t <text>    additional annotation"
     echo "  -F           Allow missing EXIF data if custom text (-t) is provided"
     echo "  -C <crop>    ImageMagick crop geometry (e.g., 0x1000+0+300)"
@@ -143,64 +143,41 @@ for i in "$@"; do
 $(magick "$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}" -format "%wx%h|%[fx:(w*${IM_TEXT_SCALER})/($IM_LEN*0.6)]|%[fx:int(w*${IM_BOUND_TEXT_X_OFFSET})]|%[fx:int(h*${IM_BOUND_TEXT_Y_OFFSET})]" info:)
 EOF
 
+    # Strip path from input file for clean local output naming
     base_name="$(basename "$i")"
 
     if [ "$GENERATE_OVERLAY" -eq 1 ]; then
-        # Standalone Transparent Overlay Mode (-T)
-        name_no_ext="${base_name%.*}"
-        output_filename="${OUT_PREFIX}${name_no_ext}.png"
-
-        magick -size "$FINAL_DIM" xc:none \
-          \( -background none \
-             -fill ${IM_BOUND_TEXT_COLOUR} ${IM_STROKE} \
-             -font ${IM_FONT} \
-             -pointsize "$P_SIZE" \
-             -gravity west \
-             label:"$IM_TEXT" \
-             -trim +repage \
-             -bordercolor none \
-             -border "%[fx:int(w*${IM_PADDING_RATIO})]x%[fx:int(w*(${IM_PADDING_RATIO}*0.8))]" \
-             \( +clone \
-                -alpha transparent \
-                -fill "${IM_BOUND_BOX_COLOUR}" \
-                -draw "roundrectangle 0,0 %[fx:w-1],%[fx:h-1] ${IM_ROUNDING_RADIUS},${IM_ROUNDING_RADIUS}" \
-                -channel A -evaluate multiply ${IM_BOUND_BOX_OPACITY} +channel \
-             \) \
-             +swap -compose Over -composite \
-          \) \
-          -gravity ${IM_TEXT_LOCATION} \
-          -geometry "+${X_OFF}+${Y_OFF}" \
-          -composite \
-          -quality "${IM_QUALITY}" \
-          "$output_filename"
+        output_filename="${OUT_PREFIX}${base_name%.*}.png"
+        input_args=(-size "$FINAL_DIM" xc:none)
     else
-        # Standard Direct-Image Annotation Mode (Resize applied first for uniform scaling)
-        magick "$i" \
-          "${CROP_ARGS[@]}" \
-          "${FINAL_RESIZE_ARG[@]}" \
-          \( -background none \
-             -fill ${IM_BOUND_TEXT_COLOUR} ${IM_STROKE} \
-             -font ${IM_FONT} \
-             -pointsize "$P_SIZE" \
-             -gravity west \
-             label:"$IM_TEXT" \
-             -trim +repage \
-             -bordercolor none \
-             -border "%[fx:int(w*${IM_PADDING_RATIO})]x%[fx:int(w*(${IM_PADDING_RATIO}*0.8))]" \
-             \( +clone \
-                -alpha transparent \
-                -fill "${IM_BOUND_BOX_COLOUR}" \
-                -draw "roundrectangle 0,0 %[fx:w-1],%[fx:h-1] ${IM_ROUNDING_RADIUS},${IM_ROUNDING_RADIUS}" \
-                -channel A -evaluate multiply ${IM_BOUND_BOX_OPACITY} +channel \
-             \) \
-             +swap -compose Over -composite \
-          \) \
-          -gravity ${IM_TEXT_LOCATION} \
-          -geometry "+${X_OFF}+${Y_OFF}" \
-          -composite \
-          -quality "${IM_QUALITY}" \
-          "${OUT_PREFIX}${base_name}"
+        output_filename="${OUT_PREFIX}${base_name}"
+        input_args=("$i" "${CROP_ARGS[@]}" "${FINAL_RESIZE_ARG[@]}")
     fi
+
+    # Standard Direct-Image Annotation Mode (Resize applied first for uniform scaling)
+    magick "${input_args[@]}" \
+      \( -background none \
+	 -fill ${IM_BOUND_TEXT_COLOUR} ${IM_STROKE} \
+	 -font ${IM_FONT} \
+	 -pointsize "$P_SIZE" \
+	 -gravity west \
+	 label:"$IM_TEXT" \
+	 -trim +repage \
+	 -bordercolor none \
+	 -border "%[fx:int(w*${IM_PADDING_RATIO})]x%[fx:int(w*(${IM_PADDING_RATIO}*0.8))]" \
+	 \( +clone \
+	    -alpha transparent \
+	    -fill "${IM_BOUND_BOX_COLOUR}" \
+	    -draw "roundrectangle 0,0 %[fx:w-1],%[fx:h-1] ${IM_ROUNDING_RADIUS},${IM_ROUNDING_RADIUS}" \
+	    -channel A -evaluate multiply ${IM_BOUND_BOX_OPACITY} +channel \
+	 \) \
+	 +swap -compose Over -composite \
+      \) \
+      -gravity ${IM_TEXT_LOCATION} \
+      -geometry "+${X_OFF}+${Y_OFF}" \
+      -composite \
+      -quality "${IM_QUALITY}" \
+      "${output_filename}"
 done
 
 if [ ${#failed_files[@]} -ne 0 ]; then
