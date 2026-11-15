@@ -30,61 +30,129 @@ fi
 mkdir -p "$ASSETS_DIR" "$OUTPUT_DIR"
 
 echo "================================================================="
-echo " GENERATING TEST IMAGES OF VARYING RESOLUTIONS"
+echo " GENERATING TEST ASSETS (Multi-Aspect/Size & Constant Reference)"
 echo "================================================================="
 
-# 1. Small resolution (400x300)
-$MAGICK_CMD -size 400x300 xc:darkblue \
-    -pointsize 20 -fill white -gravity center -annotate 0 "Small 400x300" \
-    "${ASSETS_DIR}/img_small_400x300.jpg"
+# --- Part A: Multi-Aspect & Multi-Size Assets for Dynamic Sizing ---
+$MAGICK_CMD -size 800x800 xc:darkblue \
+    -pointsize 24 -fill white -gravity center -annotate 0 "Small 1:1 (800x800)" \
+    "${ASSETS_DIR}/asset_small_11.jpg"
 
-# 2. Medium resolution (2048x1536)
+$MAGICK_CMD -size 900x600 xc:darkslateblue \
+    -pointsize 24 -fill white -gravity center -annotate 0 "Small 3:2 (900x600)" \
+    "${ASSETS_DIR}/asset_small_32.jpg"
+
 $MAGICK_CMD -size 2048x1536 xc:darkgreen \
-    -pointsize 48 -fill white -gravity center -annotate 0 "Medium 2048x1536" \
-    "${ASSETS_DIR}/img_medium_2048x1536.jpg"
+    -pointsize 42 -fill white -gravity center -annotate 0 "Medium 4:3 (2048x1536)" \
+    "${ASSETS_DIR}/asset_med_43.jpg"
 
-# 3. High resolution (4000x3000)
-$MAGICK_CMD -size 4000x3000 xc:maroon \
-    -pointsize 72 -fill white -gravity center -annotate 0 "High-Res 4000x3000" \
-    "${ASSETS_DIR}/img_high_4000x3000.jpg"
+$MAGICK_CMD -size 3000x2000 xc:maroon \
+    -pointsize 54 -fill white -gravity center -annotate 0 "Large 3:2 (3000x2000)" \
+    "${ASSETS_DIR}/asset_large_32.jpg"
 
-echo "  -> Assets created in ./${ASSETS_DIR}/"
+$MAGICK_CMD -size 2400x2400 xc:midnightblue \
+    -pointsize 54 -fill white -gravity center -annotate 0 "Large 1:1 (2400x2400)" \
+    "${ASSETS_DIR}/asset_large_11.jpg"
+
+# --- Part B: Constant Reference Asset for Styling Matrix ---
+$MAGICK_CMD -size 1500x1000 xc:darkslategray \
+    -pointsize 42 -fill white -gravity center -annotate 0 "Constant Base 1500x1000" \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+# Populate mock EXIF metadata across all test assets
+if command -v exiftool &>/dev/null; then
+    exiftool -overwrite_original -Model="Nikon D800" -LensModel="Nikkor 18mm f/4 AI" -Aperture="4" -ISO="400" "${ASSETS_DIR}"/*.jpg &>/dev/null
+fi
+
+echo "  -> All test assets created and EXIF populated in ./${ASSETS_DIR}/"
 echo ""
 
 echo "================================================================="
-echo " RUNNING TEST MATRIX (Scalers, Locations, Opacities, Offsets, Padding)"
+echo " TESTS 1-5: DYNAMIC SIZING & SCALING ACROSS VARIED ASSETS"
 echo "================================================================="
 
-# Test 1: Default Settings (Scaler 0.35, Northwest, Default Opacity/Offsets)
-echo "[Test 1] Default Scaler (0.35) & Northwest Location..."
-"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test1_default_" -R "1200x" -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+echo "[Test 1] Small Square 1:1 (800x800)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test1_small_11_"  -l northwest -S 0.35 "${ASSETS_DIR}/asset_small_11.jpg"
 
-# Test 2: Smaller Scaler (0.25), Southeast Location, High Opacity (0.9)
-echo "[Test 2] Smaller Scaler (0.25), Southeast, High Opacity (0.9)..."
-"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test2_se_025_op09_" -R "1200x" -S 0.25 -l southeast -O 0.9 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+echo "[Test 2] Small Landscape 3:2 (900x600)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test2_small_32_"  -l northwest -S 0.35 "${ASSETS_DIR}/asset_small_32.jpg"
 
-# Test 3: Larger Scaler (0.5), Northeast Location, Custom Offsets (x=0.08, y=0.08)
-echo "[Test 3] Larger Scaler (0.5), Northeast, Custom Offsets..."
-"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test3_ne_05_offsets_" -R "1200x" -S 0.5 -l northeast -x 0.08 -y 0.08 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+echo "[Test 3] Medium 4:3 (2048x1536)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test3_med_43_"     -l northwest -S 0.35 "${ASSETS_DIR}/asset_med_43.jpg"
 
-# Test 4: Custom Padding (0.06), Southwest Location, Low Opacity (0.3)
-echo "[Test 4] Southwest, Padding (0.06), Low Opacity (0.3)..."
-"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test4_sw_pad06_op03_" -R "1200x" -S 0.35 -l southwest -O 0.3 -p 0.06 -F -t "Nikkor 18mm f/4 AI @ f/4.0" "${ASSETS_DIR}"/*.jpg
+echo "[Test 4] Large Landscape 3:2 (3000x2000)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test4_large_32_"  -l northwest -S 0.35 "${ASSETS_DIR}/asset_large_32.jpg"
 
-# Test 5: Standalone Transparent Overlay Mode (-T)
-echo "[Test 5] Standalone Transparent Overlay Mode (-T)..."
-"$ANNOTATE_SCRIPT" -T -o "${OUTPUT_DIR}/test5_overlay_" -R "1200x" -F -t "Overlay Text @ f/2.8" "${ASSETS_DIR}"/*.jpg
+echo "[Test 5] Large Square 1:1 (2400x2400)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test5_large_11_"  -l northwest -S 0.35 "${ASSETS_DIR}/asset_large_11.jpg"
 
-# Demonstrate compositing the generated transparent overlay PNG back onto an image
-if [ -f "${OUTPUT_DIR}/test5_overlay_img_small_400x300.png" ]; then
-    echo "  -> Verifying composition workflow for Test 5 (-T overlay)..."
-    $MAGICK_CMD "${ASSETS_DIR}/img_small_400x300.jpg" \
-        -resize 1200x \
-        "${OUTPUT_DIR}/test5_overlay_img_small_400x300.png" \
+echo ""
+echo "================================================================="
+echo " TESTS 6-10: STYLING, POSITIONING & SCALING MATRIX (Constant 1500x1000)"
+echo "================================================================="
+
+echo "[Test 6] Northwest Location, Default Scaler (0.35), Default Box Style..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test6_nw_default_" \
+    -l northwest -S 0.35 \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+echo "[Test 7] Southeast Location, Smaller Scaler (0.25), High Opacity (0.9)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test7_se_scaler025_op09_" \
+    -l southeast -S 0.25 -O 0.9 \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+echo "[Test 8] Northeast Location, Larger Scaler (0.5), Custom Offsets (x=0.08, y=0.08)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test8_ne_scaler05_offsets_" \
+    -l northeast -S 0.5 -x 0.08 -y 0.08 \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+echo "[Test 9] Southwest Location, Custom Padding (0.06), Low Opacity (0.3), High Corner Rounding (r=24)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test9_sw_padding_rounding_" \
+    -l southwest -S 0.35 -O 0.3 -p 0.06 -r 24 \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+echo "[Test 10] North Location, Custom Text Color (yellow), Custom Box Color (navy), Sharp Corners (r=4)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test10_custom_colors_box_" \
+    -l north -S 0.35 -c yellow -b navy -r 4 \
+    "${ASSETS_DIR}/asset_1500x1000.jpg"
+
+echo ""
+echo "================================================================="
+echo " TESTS 11-15: FEATURE & EDGE-CASE TEST SUITE"
+echo "================================================================="
+
+echo "[Test 11] Standalone Transparent Overlay Mode (-T)..."
+"$ANNOTATE_SCRIPT" -T -o "${OUTPUT_DIR}/test11_overlay_" "${ASSETS_DIR}/asset_large_32.jpg"
+
+if [ -f "${OUTPUT_DIR}/test11_overlay_asset_large_32.png" ]; then
+    echo "  -> Verifying composition workflow for Test 11 (-T overlay)..."
+    $MAGICK_CMD "${ASSETS_DIR}/asset_large_32.jpg" \
+        "${OUTPUT_DIR}/test11_overlay_asset_large_32.png" \
         -composite \
-        "${OUTPUT_DIR}/test5_composited_small_result.jpg"
-    echo "  -> Composited output saved to ./${OUTPUT_DIR}/test5_composited_small_result.jpg"
+        "${OUTPUT_DIR}/test11_composited_result.jpg"
+    echo "  -> Composited output saved to ./${OUTPUT_DIR}/test11_composited_result.jpg"
 fi
+
+echo "[Test 12] Custom ExifTool Format string (-e)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test12_custom_format_" \
+    -e 'ISO $ISO @ $Model' \
+    "${ASSETS_DIR}/asset_med_43.jpg"
+
+echo "[Test 13] Image Cropping (-C)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test13_cropped_" \
+    -C "1500x1000+500+500" \
+    "${ASSETS_DIR}/asset_large_32.jpg"
+
+echo "[Test 14] Missing EXIF error handling..."
+$MAGICK_CMD -size 1000x1000 xc:black "${ASSETS_DIR}/img_no_exif.jpg"
+
+echo "  -> Testing strict failure when EXIF is missing (expected error message below):"
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test14_fail_" "${ASSETS_DIR}/img_no_exif.jpg" || echo "  -> Successfully caught missing EXIF!"
+
+echo "[Test 15] Missing EXIF with -F bypass and custom text (-t)..."
+"$ANNOTATE_SCRIPT" -o "${OUTPUT_DIR}/test15_pass_" \
+    -F -t "Manual Annotation Only (No EXIF)" \
+    "${ASSETS_DIR}/img_no_exif.jpg"
 
 echo ""
 echo "================================================================="
